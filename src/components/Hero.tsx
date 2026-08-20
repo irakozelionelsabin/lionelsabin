@@ -1,19 +1,13 @@
-import React, { useRef, useState } from 'react';
+import React from 'react';
 import { usePortfolio } from '../context/PortfolioContext';
-import { fireConfetti } from '../utils/confetti';
-import { optimizeImage } from '../utils/imageOptimizer';
 import { 
   Bot, 
   Code2, 
   BarChart3, 
   Brain, 
-  Camera, 
-  Upload, 
-  Check, 
   ArrowRight,
   User,
   Sparkles,
-  Loader2,
   Database,
   Cpu,
   Globe
@@ -33,10 +27,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
 };
 
 export const Hero: React.FC = () => {
-  const { profile, updateProfile, heroTabs } = usePortfolio();
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [uploadSuccess, setUploadSuccess] = useState(false);
-  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const { profile, heroTabs } = usePortfolio();
 
   const getTabIcon = (iconName?: string) => {
     if (iconName && ICON_MAP[iconName]) return ICON_MAP[iconName];
@@ -47,28 +38,6 @@ export const Hero: React.FC = () => {
   const t2: HeroFeatureTab = heroTabs[1] || initialHeroFeatureTabs[1];
   const t3: HeroFeatureTab = heroTabs[2] || initialHeroFeatureTabs[2];
   const t4: HeroFeatureTab = heroTabs[3] || initialHeroFeatureTabs[3];
-
-  const handleProfilePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      try {
-        setIsUploadingPhoto(true);
-        const photoData = await optimizeImage(file, 1200, 1200, 0.86);
-        updateProfile({ profilePhoto: photoData });
-        setUploadSuccess(true);
-        fireConfetti({
-          particleCount: 70,
-          spread: 80,
-          origin: { y: 0.4 }
-        });
-        setTimeout(() => setUploadSuccess(false), 4000);
-      } catch (err) {
-        console.error('Error optimizing hero profile photo:', err);
-      } finally {
-        setIsUploadingPhoto(false);
-      }
-    }
-  };
 
   const handleScrollTo = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
     e.preventDefault();
@@ -556,14 +525,11 @@ export const Hero: React.FC = () => {
             {/* RIGHT COLUMN: FRAMELESS PROFILE PHOTO AS-IS (Computer View) */}
             <div className="col-span-4 flex flex-col items-center justify-center relative">
               
-              {/* Natural Frameless Photo Container */}
-              <div className="relative w-full max-w-[340px] flex flex-col items-center justify-center mb-4 group">
+              {/* Natural Frameless Photo Container - No background, no circle, no enclosing box */}
+              <div className="relative w-full max-w-[340px] flex flex-col items-center justify-center mb-4">
                 
-                {/* Photo Display As-Is without any circle or frame */}
-                <div 
-                  onClick={() => fileInputRef.current?.click()}
-                  className="relative w-full flex items-center justify-center cursor-pointer transition-transform duration-300 group-hover:scale-[1.02]"
-                >
+                {/* Photo Display As-Is without any circle, box border, or camera overlay */}
+                <div className="relative w-full flex items-center justify-center transition-transform duration-300">
                   {profile.profilePhoto ? (
                     <img
                       src={profile.profilePhoto}
@@ -577,45 +543,9 @@ export const Hero: React.FC = () => {
                       <span className="font-orbitron font-bold text-white text-base">
                         {profile.fullName || 'IRAKOZE Lionel Sabin'}
                       </span>
-                      <span className="text-xs font-mono text-cyan-300 mt-1">
-                        Click to place your photo
-                      </span>
                     </div>
                   )}
-
-                  {/* Interactive Admin Upload Hover Mask */}
-                  <div 
-                    className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-4 text-center cursor-pointer rounded-2xl"
-                  >
-                    <div className="w-12 h-12 rounded-full bg-cyan-500/40 border border-cyan-300 text-white flex items-center justify-center mb-2 shadow-[0_0_20px_rgba(0,229,255,0.9)] animate-pulse">
-                      <Camera className="w-6 h-6 text-cyan-200" />
-                    </div>
-                    <span className="text-xs font-orbitron font-bold text-white">
-                      Upload Profile Photo
-                    </span>
-                    <span className="text-[10px] text-cyan-300 font-mono mt-1">
-                      Click to choose image file
-                    </span>
-                  </div>
-
                 </div>
-
-                {/* Direct Admin Upload Floating Badge */}
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="mt-3 bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 hover:from-cyan-300 hover:to-blue-400 text-white text-[11px] font-orbitron font-bold px-4 py-1.5 rounded-full shadow-[0_0_20px_rgba(0,229,255,0.9)] flex items-center gap-1.5 transition-all transform hover:scale-105 z-20 cursor-pointer"
-                  title="Upload profile photo"
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>Upload Photo</span>
-                </button>
-
-                {uploadSuccess && (
-                  <div className="mt-2 bg-emerald-500 text-white text-[10px] font-mono font-bold px-3 py-1 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.9)] flex items-center gap-1 animate-in fade-in z-20">
-                    <Check className="w-3 h-3" />
-                    <span>Photo Uploaded!</span>
-                  </div>
-                )}
 
               </div>
 

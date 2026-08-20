@@ -35,7 +35,9 @@ import {
   LogOut,
   CloudCheck,
   Cloud,
-  Loader2
+  Loader2,
+  ArrowLeft,
+  Globe
 } from 'lucide-react';
 import { AdminView } from '../../types';
 
@@ -142,6 +144,18 @@ export const AdminLayout: React.FC = () => {
         {/* Admin Top Navigation Bar */}
         <header className="h-14 sm:h-16 px-2.5 sm:px-6 border-b border-cyan-500/20 bg-[#070c1d]/95 backdrop-blur-xl flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            {/* Primary Back To Website Navigation Button */}
+            <button
+              id="admin-primary-back-to-site-btn"
+              onClick={() => setAdminOpen(false)}
+              className="flex items-center gap-1.5 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-orbitron font-bold text-white bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-blue-500 shadow-[0_0_15px_rgba(0,229,255,0.4)] border border-cyan-300/40 transition-all cursor-pointer shrink-0"
+              title="Return to Portfolio Website"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-200" />
+              <span className="hidden sm:inline">Back to Website</span>
+              <span className="sm:hidden">Exit</span>
+            </button>
+
             <button
               onClick={() => setMobileSidebarOpen(true)}
               className="lg:hidden p-1.5 sm:p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white"
@@ -193,17 +207,6 @@ export const AdminLayout: React.FC = () => {
               <span>Reset</span>
             </button>
 
-            {/* Exit Admin & View Live Site */}
-            <button
-              id="admin-exit-view-site-btn"
-              onClick={() => setAdminOpen(false)}
-              className="inline-flex items-center gap-1 px-2.5 sm:px-4 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold text-white bg-gradient-to-r from-cyan-500 to-blue-600 shadow-[0_0_15px_rgba(56,189,248,0.3)] hover:opacity-90 transition-all"
-            >
-              <Eye className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">View Site</span>
-              <span className="sm:hidden">Site</span>
-            </button>
-
             {/* Logout Button */}
             <button
               id="admin-logout-btn"
@@ -219,6 +222,7 @@ export const AdminLayout: React.FC = () => {
               onClick={() => setAdminOpen(false)}
               className="p-1.5 sm:p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-white/10 transition-colors"
               aria-label="Close Admin"
+              title="Close Admin Panel"
             >
               <X className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
@@ -228,6 +232,14 @@ export const AdminLayout: React.FC = () => {
         {/* Mobile Horizontal Quick Navigation Bar (Tabs for phone view) */}
         <div className="lg:hidden bg-[#050a1c] border-b border-white/10 px-2 py-1.5 overflow-x-auto no-scrollbar shrink-0">
           <div className="flex items-center gap-1.5 w-max">
+            {/* Quick Back to Site button in mobile tabs */}
+            <button
+              onClick={() => setAdminOpen(false)}
+              className="px-3 py-1 rounded-lg text-xs font-bold font-orbitron flex items-center gap-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-[0_0_10px_rgba(0,229,255,0.4)] shrink-0"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back to Site</span>
+            </button>
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeAdminView === item.id;

@@ -1,17 +1,23 @@
 /**
  * Client-side safe image compressor & optimizer
- * Resizes camera photos to web-optimal dimensions (~800-960px)
- * and compresses them so they save instantly in Firestore and browser storage
- * without triggering Firestore 1MB document limit or storage errors.
+ * Preserves PNG transparency for transparent cutout photos/logos
+ * and compresses photos so they save cleanly without storage errors.
  */
 export async function optimizeImage(
   fileOrDataUrl: File | string,
-  maxWidth = 960,
-  maxHeight = 960,
-  quality = 0.78
+  maxWidth = 1000,
+  maxHeight = 1000,
+  quality = 0.85
 ): Promise<string> {
   return new Promise((resolve) => {
-    // If it's a file, convert to object URL or FileReader first
+    // Detect if input is PNG / transparent
+    let isPng = false;
+    if (typeof fileOrDataUrl !== 'string' && fileOrDataUrl instanceof File) {
+      isPng = fileOrDataUrl.type === 'image/png' || fileOrDataUrl.name.toLowerCase().endsWith('.png');
+    } else if (typeof fileOrDataUrl === 'string') {
+      isPng = fileOrDataUrl.startsWith('data:image/png');
+    }
+
     const getSourceUrl = (): Promise<string> => {
       if (typeof fileOrDataUrl === 'string') {
         return Promise.resolve(fileOrDataUrl);
@@ -31,12 +37,22 @@ export async function optimizeImage(
           return;
         }
 
+        if (src.startsWith('data:image/png')) {
+          isPng = true;
+        }
+
         const img = new Image();
         img.crossOrigin = 'anonymous';
 
         img.onload = () => {
           try {
             let { width, height } = img;
+
+            // If image is already reasonably sized and is a transparent PNG under ~400KB, keep as is
+            if (isPng && src.length < 500000 && width <= maxWidth && height <= maxHeight) {
+              resolve(src);
+              return;
+            }
 
             // Constrain dimensions
             if (width > maxWidth || height > maxHeight) {
@@ -55,28 +71,35 @@ export async function optimizeImage(
               return;
             }
 
+            // Explicitly clear rect so PNG transparency is 100% preserved
+            ctx.clearRect(0, 0, width, height);
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
             ctx.drawImage(img, 0, 0, width, height);
 
-            // Compress to web-friendly JPEG
-            let compressed = canvas.toDataURL('image/jpeg', quality);
+            if (isPng) {
+              // Preserve PNG format without background
+              const compressedPng = canvas.toDataURL('image/png');
+              resolve(compressedPng);
+            } else {
+              // Standard JPEG compression for opaque camera photos
+              let compressed = canvas.toDataURL('image/jpeg', quality);
 
-            // If still unusually large (>350KB base64), do a second lighter pass
-            if (compressed.length > 450000) {
-              const secondCanvas = document.createElement('canvas');
-              secondCanvas.width = Math.round(width * 0.75);
-              secondCanvas.height = Math.round(height * 0.75);
-              const secondCtx = secondCanvas.getContext('2d');
-              if (secondCtx) {
-                secondCtx.imageSmoothingEnabled = true;
-                secondCtx.imageSmoothingQuality = 'medium';
-                secondCtx.drawImage(canvas, 0, 0, secondCanvas.width, secondCanvas.height);
-                compressed = secondCanvas.toDataURL('image/jpeg', 0.70);
+              if (compressed.length > 450000) {
+                const secondCanvas = document.createElement('canvas');
+                secondCanvas.width = Math.round(width * 0.75);
+                secondCanvas.height = Math.round(height * 0.75);
+                const secondCtx = secondCanvas.getContext('2d');
+                if (secondCtx) {
+                  secondCtx.imageSmoothingEnabled = true;
+                  secondCtx.imageSmoothingQuality = 'medium';
+                  secondCtx.drawImage(canvas, 0, 0, secondCanvas.width, secondCanvas.height);
+                  compressed = secondCanvas.toDataURL('image/jpeg', 0.72);
+                }
               }
-            }
 
-            resolve(compressed);
+              resolve(compressed);
+            }
           } catch (err) {
             console.warn('Image optimization canvas error, fallback to raw:', err);
             resolve(src);

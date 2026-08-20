@@ -16,7 +16,8 @@ import {
   Eye, 
   Compass, 
   X,
-  ChevronRight
+  ChevronRight,
+  ArrowLeft
 } from 'lucide-react';
 import { AdminView } from '../../types';
 
@@ -81,7 +82,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ onCloseMobile }) => 
     >
       {/* Top Header */}
       <div>
-        <div className="p-5 border-b border-white/10 flex items-center justify-between">
+        <div className="p-4 border-b border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {profile.logoImage ? (
               <img
@@ -115,6 +116,17 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ onCloseMobile }) => 
               <X className="w-5 h-5" />
             </button>
           )}
+        </div>
+
+        {/* Quick Back to Website Header Button */}
+        <div className="p-3 border-b border-white/5">
+          <button
+            onClick={handleViewSite}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-orbitron font-bold text-white bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-blue-500 shadow-[0_0_15px_rgba(0,229,255,0.3)] transition-all cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back to Website</span>
+          </button>
         </div>
 
         {/* Navigation Items */}

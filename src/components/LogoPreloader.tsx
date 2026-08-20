@@ -23,8 +23,14 @@ export const LogoPreloader: React.FC<LogoPreloaderProps> = ({ onComplete, forceP
     }, 600);
   };
 
-  // Duration handling
+  // Duration handling and video autoplay assurance
   useEffect(() => {
+    if (hasIntroVideo && videoRef.current) {
+      videoRef.current.play().catch((err) => {
+        console.log('Video autoplay initiated with fallback:', err);
+      });
+    }
+
     if (!hasIntroVideo) {
       // 3D Celestial Planet loader exact 3.2s duration
       const exitTimer = setTimeout(() => {
@@ -41,8 +47,8 @@ export const LogoPreloader: React.FC<LogoPreloaderProps> = ({ onComplete, forceP
         clearTimeout(completeTimer);
       };
     } else {
-      // Starting Video auto-advance when ended or after timeout fallback
-      const autoSeconds = Math.max(3, (settings.introVideoAutoSkipSeconds || 10)) * 1000;
+      // Starting Video auto-advance fallback if duration exceeds settings
+      const autoSeconds = Math.max(5, (settings.introVideoAutoSkipSeconds || 15)) * 1000;
 
       const autoAdvanceTimer = setTimeout(() => {
         handleFinish();
@@ -56,13 +62,12 @@ export const LogoPreloader: React.FC<LogoPreloaderProps> = ({ onComplete, forceP
 
   if (!visible) return null;
 
-  // Render 1: Clean, Pure Full-Screen Starting Video (No text, no headers, no bottom bars, no timers)
+  // Render 1: Clean, Full-Screen Edge-to-Edge Starting Video
   if (hasIntroVideo && settings.introVideo) {
     return (
       <div
         id="starting-video-intro-preloader"
-        onClick={handleFinish}
-        className={`fixed inset-0 z-[100] flex items-center justify-center bg-black overflow-hidden select-none cursor-pointer transition-all duration-700 ${
+        className={`fixed inset-0 z-[100] w-screen h-screen flex items-center justify-center bg-black overflow-hidden select-none transition-all duration-700 ${
           isExiting ? 'opacity-0 scale-105 pointer-events-none' : 'opacity-100 scale-100'
         }`}
       >
@@ -73,8 +78,17 @@ export const LogoPreloader: React.FC<LogoPreloaderProps> = ({ onComplete, forceP
           playsInline
           muted={settings.introVideoMuted ?? true}
           onEnded={handleFinish}
-          className="w-full h-full object-contain bg-black"
+          className="w-full h-full object-cover sm:object-cover bg-black"
         />
+
+        {/* Floating Skip / Enter Button for User Convenience */}
+        <button
+          onClick={handleFinish}
+          className="absolute top-4 right-4 z-20 px-3.5 py-1.5 rounded-full bg-black/60 hover:bg-black/80 text-white/90 hover:text-white border border-white/20 hover:border-cyan-400 backdrop-blur-md text-[11px] font-orbitron font-bold transition-all shadow-[0_0_15px_rgba(0,0,0,0.8)] flex items-center gap-1.5 cursor-pointer"
+        >
+          <span>Skip</span>
+          <span className="text-cyan-400 font-mono">✕</span>
+        </button>
       </div>
     );
   }

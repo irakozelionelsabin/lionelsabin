@@ -179,22 +179,21 @@ export const Navbar: React.FC = () => {
               })}
             </nav>
 
-            {/* Right Action: Header Profile Picture Avatar & Hire Me CTA */}
+            {/* Right Action: Profile Picture Display & Hire Me CTA */}
             <div className="flex items-center gap-2 sm:gap-3">
               
-              {/* Header Profile Picture Mirror Avatar */}
+              {/* Profile Picture (Display only, in front of Hire Me button) */}
               <div 
-                id="header-profile-avatar-button"
-                onClick={() => openAdminSafely('profile')}
-                className="group relative flex items-center gap-2 p-1 sm:p-1.5 rounded-full sm:rounded-2xl bg-white/10 hover:bg-white/20 border border-white/30 hover:border-cyan-300 transition-all shadow-[0_0_15px_rgba(0,229,255,0.3)] cursor-pointer"
-                title="Admin Profile Management"
+                id="header-profile-avatar-display"
+                className="relative flex items-center p-0.5 rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-pink-500 shadow-[0_0_15px_rgba(0,229,255,0.4)] shrink-0"
+                title={profile.fullName || 'IRAKOZE Lionel Sabin'}
               >
-                <div className="relative w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden border-2 border-cyan-400 shadow-[0_0_10px_rgba(0,229,255,0.8)] bg-[#040c26]">
+                <div className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-full overflow-hidden bg-[#040c26] border border-black/40">
                   {profile.profilePhoto ? (
                     <img 
                       src={profile.profilePhoto} 
                       alt={profile.fullName || 'IRAKOZE Lionel Sabin'}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                      className="w-full h-full object-cover"
                       referrerPolicy="no-referrer"
                     />
                   ) : (
@@ -203,10 +202,6 @@ export const Navbar: React.FC = () => {
                     </div>
                   )}
                 </div>
-
-                <span className="hidden lg:inline text-[11px] font-orbitron font-bold text-white group-hover:text-cyan-300 transition-colors pr-1.5">
-                  Admin
-                </span>
               </div>
 
               {/* Hire Me CTA Button */}
@@ -214,7 +209,7 @@ export const Navbar: React.FC = () => {
                 id="nav-hire-me-btn"
                 href="#contact"
                 onClick={(e) => handleScrollTo(e, '#contact')}
-                className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[11px] sm:text-xs font-orbitron font-extrabold text-white bg-gradient-to-r from-cyan-400 via-blue-500 to-pink-500 hover:from-cyan-300 hover:to-pink-400 border border-white/70 shadow-[0_0_20px_rgba(0,229,255,0.7)] hover:scale-105 transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[11px] sm:text-xs font-orbitron font-extrabold text-white bg-gradient-to-r from-cyan-400 via-blue-500 to-pink-500 hover:from-cyan-300 hover:to-pink-400 border border-white/70 shadow-[0_0_20px_rgba(0,229,255,0.7)] hover:scale-105 transition-all cursor-pointer"
               >
                 <Send className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 <span>Hire Me</span>

@@ -1,16 +1,13 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { usePortfolio } from '../context/PortfolioContext';
 import { Card3D } from './Card3D';
 import { RevealOnScroll } from './RevealOnScroll';
-import confetti from 'canvas-confetti';
 import { 
   User, 
   GraduationCap, 
   School, 
   BookOpen, 
   Sparkles, 
-  Camera, 
-  Upload, 
   CheckCircle2, 
   MapPin, 
   Phone, 
@@ -20,24 +17,7 @@ import {
 } from 'lucide-react';
 
 export const AboutSection: React.FC = () => {
-  const { profile, updateProfile } = usePortfolio();
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        updateProfile({ profilePhoto: reader.result as string });
-        confetti({
-          particleCount: 60,
-          spread: 70,
-          origin: { y: 0.3 }
-        });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+  const { profile } = usePortfolio();
 
   const handleScrollTo = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
     e.preventDefault();
