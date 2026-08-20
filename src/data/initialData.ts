@@ -136,7 +136,8 @@ export const initialSettings: SiteSettings = {
     email: "mailto:irakozelionelsabin191@gmail.com"
   },
   contactPhone: "0723519793",
-  contactEmail: "irakozelionelsabin191@gmail.com"
+  contactEmail: "irakozelionelsabin191@gmail.com",
+  adminPassword: "Lionel191@"
 };
 
 export const initialHeaderTabs: HeaderTabItem[] = [

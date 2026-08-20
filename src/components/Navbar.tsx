@@ -12,10 +12,9 @@ import {
 import confetti from 'canvas-confetti';
 
 export const Navbar: React.FC = () => {
-  const { profile, updateProfile, headerTabs } = usePortfolio();
+  const { profile, headerTabs, openAdminSafely } = usePortfolio();
   const [scrolled, setScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState('home');
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -66,35 +65,8 @@ export const Navbar: React.FC = () => {
     }
   };
 
-  const handleAvatarPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const photoData = reader.result as string;
-        updateProfile({ profilePhoto: photoData });
-        confetti({
-          particleCount: 50,
-          spread: 70,
-          origin: { y: 0.2 }
-        });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   return (
     <>
-      {/* Hidden File Input for Direct Profile Photo Upload from Header */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        onChange={handleAvatarPhotoUpload}
-        className="hidden"
-        id="navbar-profile-photo-upload"
-      />
-
       {/* Top Main Navbar Header */}
       <header 
         id="main-navbar-header"
@@ -210,12 +182,12 @@ export const Navbar: React.FC = () => {
             {/* Right Action: Header Profile Picture Avatar & Hire Me CTA */}
             <div className="flex items-center gap-2 sm:gap-3">
               
-              {/* Header Profile Picture Mirror Avatar (Replaces the Admin icon) */}
+              {/* Header Profile Picture Mirror Avatar */}
               <div 
                 id="header-profile-avatar-button"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => openAdminSafely('profile')}
                 className="group relative flex items-center gap-2 p-1 sm:p-1.5 rounded-full sm:rounded-2xl bg-white/10 hover:bg-white/20 border border-white/30 hover:border-cyan-300 transition-all shadow-[0_0_15px_rgba(0,229,255,0.3)] cursor-pointer"
-                title="Your Profile Picture (Click to update/change)"
+                title="Admin Profile Management"
               >
                 <div className="relative w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden border-2 border-cyan-400 shadow-[0_0_10px_rgba(0,229,255,0.8)] bg-[#040c26]">
                   {profile.profilePhoto ? (
@@ -230,15 +202,10 @@ export const Navbar: React.FC = () => {
                       <User className="w-4 h-4" />
                     </div>
                   )}
-                  
-                  {/* Subtle Camera Upload Hover Overlay */}
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Camera className="w-3 h-3 text-white" />
-                  </div>
                 </div>
 
                 <span className="hidden lg:inline text-[11px] font-orbitron font-bold text-white group-hover:text-cyan-300 transition-colors pr-1.5">
-                  Photo
+                  Admin
                 </span>
               </div>
 

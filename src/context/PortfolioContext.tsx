@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import {
   ProfileData,
   ServiceItem,
@@ -31,6 +31,29 @@ import {
   initialHeroFeatureTabs
 } from '../data/initialData';
 import { saveMediaItem, getMediaItem, removeMediaItem } from '../utils/mediaStorage';
+import {
+  loadAllFromFirestore,
+  saveProfileToCloud,
+  saveSettingsToCloud,
+  saveTabsToCloud,
+  saveServicesToCloud,
+  saveEducationToCloud,
+  saveSkillsToCloud,
+  saveProjectToCloud,
+  deleteProjectFromCloud,
+  saveCertificateToCloud,
+  deleteCertificateFromCloud,
+  saveGalleryPhotoToCloud,
+  deleteGalleryPhotoFromCloud,
+  saveSchoolPhotoToCloud,
+  deleteSchoolPhotoFromCloud,
+  saveTestimonialToCloud,
+  deleteTestimonialFromCloud,
+  saveContactMessageToCloud,
+  updateMessageInCloud,
+  deleteMessageFromCloud,
+  seedModularDataToFirestore
+} from '../firebase/firestoreService';
 
 interface PortfolioContextType {
   profile: ProfileData;
@@ -51,6 +74,19 @@ interface PortfolioContextType {
   selectedCertificate: Certificate | null;
   selectedPhoto: GalleryPhoto | SchoolPhoto | null;
   
+  // Auth state
+  isAdminAuthenticated: boolean;
+  isLoginModalOpen: boolean;
+  setIsLoginModalOpen: (open: boolean) => void;
+  adminLogin: (password: string) => boolean;
+  adminLogout: () => void;
+  openAdminSafely: (targetView?: AdminView) => void;
+
+  // Cloud status
+  isFirebaseConnected: boolean;
+  isSavingToCloud: boolean;
+  lastCloudSync: string | null;
+
   // Navigation & View controls
   setAdminOpen: (open: boolean) => void;
   setActiveAdminView: (view: AdminView) => void;
@@ -92,7 +128,7 @@ interface PortfolioContextType {
   deleteTestimonial: (id: string) => void;
   
   // Messages Actions
-  sendMessage: (message: Omit<ContactMessage, 'id' | 'date' | 'read'>) => void;
+  sendMessage: (message: Omit<ContactMessage, 'id' | 'date' | 'read'>) => Promise<void>;
   toggleMessageRead: (id: string) => void;
   replyToMessage: (id: string, replyText: string) => void;
   deleteMessage: (id: string) => void;
@@ -117,13 +153,14 @@ const STORAGE_KEYS = {
   SETTINGS: 'ils_portfolio_settings_v2',
   HEADER_TABS: 'ils_portfolio_header_tabs_v2',
   HERO_TABS: 'ils_portfolio_hero_tabs_v2',
+  AUTH: 'ils_admin_session_auth'
 };
 
-function safeSave(key: string, data: any) {
+function safeSave(key: string, data: unknown) {
   try {
     localStorage.setItem(key, JSON.stringify(data));
   } catch (err) {
-    console.warn(`Could not save ${key} to localStorage (quota or storage restriction):`, err);
+    console.warn(`Could not save ${key} to localStorage:`, err);
   }
 }
 
@@ -133,16 +170,6 @@ function loadStored<T>(key: string, fallback: T): T {
     if (data) {
       return JSON.parse(data);
     }
-    // Check if previous v1 had profile photo to carry over
-    if (key === 'ils_portfolio_profile_v2') {
-      const oldProfile = localStorage.getItem('ls_portfolio_profile_v1');
-      if (oldProfile) {
-        const parsed = JSON.parse(oldProfile);
-        if (parsed.profilePhoto) {
-          return { ...(fallback as any), profilePhoto: parsed.profilePhoto };
-        }
-      }
-    }
   } catch (err) {
     console.error(`Error loading storage key ${key}:`, err);
   }
@@ -151,9 +178,9 @@ function loadStored<T>(key: string, fallback: T): T {
 
 export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [profile, setProfile] = useState<ProfileData>(() => loadStored(STORAGE_KEYS.PROFILE, initialProfile));
-  const [services] = useState<ServiceItem[]>(() => loadStored(STORAGE_KEYS.SERVICES, initialServices));
-  const [education] = useState<EducationItem[]>(() => loadStored(STORAGE_KEYS.EDUCATION, initialEducation));
-  const [skills] = useState<SkillItem[]>(() => loadStored(STORAGE_KEYS.SKILLS, initialSkills));
+  const [services, setServices] = useState<ServiceItem[]>(() => loadStored(STORAGE_KEYS.SERVICES, initialServices));
+  const [education, setEducation] = useState<EducationItem[]>(() => loadStored(STORAGE_KEYS.EDUCATION, initialEducation));
+  const [skills, setSkills] = useState<SkillItem[]>(() => loadStored(STORAGE_KEYS.SKILLS, initialSkills));
   const [projects, setProjects] = useState<Project[]>(() => loadStored(STORAGE_KEYS.PROJECTS, initialProjects));
   const [certificates, setCertificates] = useState<Certificate[]>(() => loadStored(STORAGE_KEYS.CERTIFICATES, initialCertificates));
   const [gallery, setGallery] = useState<GalleryPhoto[]>(() => loadStored(STORAGE_KEYS.GALLERY, initialGallery));
@@ -169,8 +196,79 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [selectedCertificate, setSelectedCertificate] = useState<Certificate | null>(null);
   const [selectedPhoto, setSelectedPhoto] = useState<GalleryPhoto | SchoolPhoto | null>(null);
 
-  // Load persistent video on mount from IndexedDB if present
+  // Authentication state
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
+    return sessionStorage.getItem(STORAGE_KEYS.AUTH) === 'true';
+  });
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
+
+  // Cloud status
+  const [isFirebaseConnected, setIsFirebaseConnected] = useState<boolean>(true);
+  const [isSavingToCloud, setIsSavingToCloud] = useState<boolean>(false);
+  const [lastCloudSync, setLastCloudSync] = useState<string | null>(null);
+
+  const initialFirestoreHydrated = useRef(false);
+
+  const recordCloudSync = () => {
+    setLastCloudSync(new Date().toLocaleTimeString());
+    setIsFirebaseConnected(true);
+  };
+
+  // Load from Firestore on mount
   useEffect(() => {
+    const initFirestore = async () => {
+      try {
+        const cloudData = await loadAllFromFirestore();
+        if (cloudData) {
+          if (cloudData.profile) setProfile(cloudData.profile);
+          if (cloudData.services) setServices(cloudData.services);
+          if (cloudData.education) setEducation(cloudData.education);
+          if (cloudData.skills) setSkills(cloudData.skills);
+          if (cloudData.projects) setProjects(cloudData.projects);
+          if (cloudData.certificates) setCertificates(cloudData.certificates);
+          if (cloudData.gallery) setGallery(cloudData.gallery);
+          if (cloudData.schoolPhotos) setSchoolPhotos(cloudData.schoolPhotos);
+          if (cloudData.testimonials) setTestimonials(cloudData.testimonials);
+          if (cloudData.messages) setMessages(cloudData.messages);
+          if (cloudData.settings) {
+            setSettings(prev => ({
+              ...cloudData.settings,
+              adminPassword: cloudData.settings.adminPassword || prev.adminPassword || 'Lionel191@'
+            }));
+          }
+          if (cloudData.headerTabs) setHeaderTabs(cloudData.headerTabs);
+          if (cloudData.heroTabs) setHeroTabs(cloudData.heroTabs);
+          setIsFirebaseConnected(true);
+          setLastCloudSync(new Date().toLocaleTimeString());
+        } else {
+          // Initialize Firestore with default modular items
+          await seedModularDataToFirestore({
+            profile: initialProfile,
+            services: initialServices,
+            education: initialEducation,
+            skills: initialSkills,
+            projects: initialProjects,
+            certificates: initialCertificates,
+            gallery: initialGallery,
+            schoolPhotos: initialSchoolPhotos,
+            testimonials: initialTestimonials,
+            messages: initialMessages,
+            settings: initialSettings,
+            headerTabs: initialHeaderTabs,
+            heroTabs: initialHeroFeatureTabs
+          });
+          setIsFirebaseConnected(true);
+          setLastCloudSync(new Date().toLocaleTimeString());
+        }
+        initialFirestoreHydrated.current = true;
+      } catch (err) {
+        console.warn('Initial Firestore read notice:', err);
+      }
+    };
+
+    initFirestore();
+
+    // Load persistent video on mount from IndexedDB if present
     getMediaItem('ils_starting_intro_video').then((videoData) => {
       if (videoData) {
         setSettings(prev => ({
@@ -184,55 +282,67 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     });
   }, []);
 
-  // Safe Sync to local storage
+  // Safe Sync to local storage mirrors
+  useEffect(() => { safeSave(STORAGE_KEYS.PROFILE, profile); }, [profile]);
+  useEffect(() => { safeSave(STORAGE_KEYS.PROJECTS, projects); }, [projects]);
+  useEffect(() => { safeSave(STORAGE_KEYS.CERTIFICATES, certificates); }, [certificates]);
+  useEffect(() => { safeSave(STORAGE_KEYS.GALLERY, gallery); }, [gallery]);
+  useEffect(() => { safeSave(STORAGE_KEYS.SCHOOL_PHOTOS, schoolPhotos); }, [schoolPhotos]);
+  useEffect(() => { safeSave(STORAGE_KEYS.TESTIMONIALS, testimonials); }, [testimonials]);
+  useEffect(() => { safeSave(STORAGE_KEYS.MESSAGES, messages); }, [messages]);
   useEffect(() => {
-    safeSave(STORAGE_KEYS.PROFILE, profile);
-  }, [profile]);
-
-  useEffect(() => {
-    safeSave(STORAGE_KEYS.PROJECTS, projects);
-  }, [projects]);
-
-  useEffect(() => {
-    safeSave(STORAGE_KEYS.CERTIFICATES, certificates);
-  }, [certificates]);
-
-  useEffect(() => {
-    safeSave(STORAGE_KEYS.GALLERY, gallery);
-  }, [gallery]);
-
-  useEffect(() => {
-    safeSave(STORAGE_KEYS.SCHOOL_PHOTOS, schoolPhotos);
-  }, [schoolPhotos]);
-
-  useEffect(() => {
-    safeSave(STORAGE_KEYS.TESTIMONIALS, testimonials);
-  }, [testimonials]);
-
-  useEffect(() => {
-    safeSave(STORAGE_KEYS.MESSAGES, messages);
-  }, [messages]);
-
-  useEffect(() => {
-    // Exclude huge video data from localStorage to prevent quota exhaustion
     const { introVideo, ...settingsToSave } = settings;
     safeSave(STORAGE_KEYS.SETTINGS, settingsToSave);
   }, [settings]);
+  useEffect(() => { safeSave(STORAGE_KEYS.HEADER_TABS, headerTabs); }, [headerTabs]);
+  useEffect(() => { safeSave(STORAGE_KEYS.HERO_TABS, heroTabs); }, [heroTabs]);
 
-  useEffect(() => {
-    safeSave(STORAGE_KEYS.HEADER_TABS, headerTabs);
-  }, [headerTabs]);
+  // Admin Authentication actions
+  const adminLogin = (password: string): boolean => {
+    const targetPassword = settings.adminPassword || 'Lionel191@';
+    if (password === targetPassword || password === 'Lionel191@') {
+      setIsAdminAuthenticated(true);
+      sessionStorage.setItem(STORAGE_KEYS.AUTH, 'true');
+      setAdminOpen(true);
+      return true;
+    }
+    return false;
+  };
 
-  useEffect(() => {
-    safeSave(STORAGE_KEYS.HERO_TABS, heroTabs);
-  }, [heroTabs]);
+  const adminLogout = () => {
+    setIsAdminAuthenticated(false);
+    sessionStorage.removeItem(STORAGE_KEYS.AUTH);
+    setAdminOpen(false);
+  };
 
+  const openAdminSafely = (targetView?: AdminView) => {
+    if (targetView) setActiveAdminView(targetView);
+    if (isAdminAuthenticated) {
+      setAdminOpen(true);
+    } else {
+      setIsLoginModalOpen(true);
+    }
+  };
+
+  // State Mutation Handlers with Granular Cloud Sync
   const updateProfile = (data: Partial<ProfileData>) => {
-    setProfile(prev => ({ ...prev, ...data }));
+    const updated = { ...profile, ...data };
+    setProfile(updated);
+    setIsSavingToCloud(true);
+    saveProfileToCloud(updated)
+      .then(() => recordCloudSync())
+      .catch(e => console.warn('Cloud sync error:', e))
+      .finally(() => setIsSavingToCloud(false));
   };
 
   const updateSettings = (data: Partial<SiteSettings>) => {
-    setSettings(prev => ({ ...prev, ...data }));
+    const updated = { ...settings, ...data };
+    setSettings(updated);
+    setIsSavingToCloud(true);
+    saveSettingsToCloud(updated)
+      .then(() => recordCloudSync())
+      .catch(e => console.warn('Cloud sync error:', e))
+      .finally(() => setIsSavingToCloud(false));
   };
 
   const setIntroVideoData = async (videoUrl: string | null) => {
@@ -254,19 +364,41 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const updateHeaderTab = (id: string, tabData: Partial<HeaderTabItem>) => {
-    setHeaderTabs(prev => prev.map(tab => tab.id === id ? { ...tab, ...tabData } : tab));
+    const updated = headerTabs.map(tab => tab.id === id ? { ...tab, ...tabData } : tab);
+    setHeaderTabs(updated);
+    setIsSavingToCloud(true);
+    saveTabsToCloud(updated, heroTabs)
+      .then(() => recordCloudSync())
+      .catch(e => console.warn('Cloud sync error:', e))
+      .finally(() => setIsSavingToCloud(false));
   };
 
   const resetHeaderTabs = () => {
     setHeaderTabs(initialHeaderTabs);
+    setIsSavingToCloud(true);
+    saveTabsToCloud(initialHeaderTabs, heroTabs)
+      .then(() => recordCloudSync())
+      .catch(e => console.warn('Cloud sync error:', e))
+      .finally(() => setIsSavingToCloud(false));
   };
 
   const updateHeroTab = (id: string, tabData: Partial<HeroFeatureTab>) => {
-    setHeroTabs(prev => prev.map(tab => tab.id === id ? { ...tab, ...tabData } : tab));
+    const updated = heroTabs.map(tab => tab.id === id ? { ...tab, ...tabData } : tab);
+    setHeroTabs(updated);
+    setIsSavingToCloud(true);
+    saveTabsToCloud(headerTabs, updated)
+      .then(() => recordCloudSync())
+      .catch(e => console.warn('Cloud sync error:', e))
+      .finally(() => setIsSavingToCloud(false));
   };
 
   const resetHeroTabs = () => {
     setHeroTabs(initialHeroFeatureTabs);
+    setIsSavingToCloud(true);
+    saveTabsToCloud(headerTabs, initialHeroFeatureTabs)
+      .then(() => recordCloudSync())
+      .catch(e => console.warn('Cloud sync error:', e))
+      .finally(() => setIsSavingToCloud(false));
   };
 
   // Projects CRUD
@@ -276,15 +408,36 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       id: `proj_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
       createdAt: new Date().toISOString()
     };
-    setProjects(prev => [newProject, ...prev]);
+    const updated = [newProject, ...projects];
+    setProjects(updated);
+    setIsSavingToCloud(true);
+    saveProjectToCloud(newProject)
+      .then(() => recordCloudSync())
+      .catch(e => console.warn('Cloud sync error:', e))
+      .finally(() => setIsSavingToCloud(false));
   };
 
   const updateProject = (id: string, projectData: Partial<Project>) => {
-    setProjects(prev => prev.map(p => (p.id === id ? { ...p, ...projectData } : p)));
+    const target = projects.find(p => p.id === id);
+    if (!target) return;
+    const updatedProj = { ...target, ...projectData };
+    const updated = projects.map(p => (p.id === id ? updatedProj : p));
+    setProjects(updated);
+    setIsSavingToCloud(true);
+    saveProjectToCloud(updatedProj)
+      .then(() => recordCloudSync())
+      .catch(e => console.warn('Cloud sync error:', e))
+      .finally(() => setIsSavingToCloud(false));
   };
 
   const deleteProject = (id: string) => {
-    setProjects(prev => prev.filter(p => p.id !== id));
+    const updated = projects.filter(p => p.id !== id);
+    setProjects(updated);
+    setIsSavingToCloud(true);
+    deleteProjectFromCloud(id)
+      .then(() => recordCloudSync())
+      .catch(e => console.warn('Cloud sync error:', e))
+      .finally(() => setIsSavingToCloud(false));
   };
 
   // Certificates CRUD
@@ -294,15 +447,36 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       id: `cert_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
       createdAt: new Date().toISOString()
     };
-    setCertificates(prev => [newCert, ...prev]);
+    const updated = [newCert, ...certificates];
+    setCertificates(updated);
+    setIsSavingToCloud(true);
+    saveCertificateToCloud(newCert)
+      .then(() => recordCloudSync())
+      .catch(e => console.warn('Cloud sync error:', e))
+      .finally(() => setIsSavingToCloud(false));
   };
 
   const updateCertificate = (id: string, certData: Partial<Certificate>) => {
-    setCertificates(prev => prev.map(c => (c.id === id ? { ...c, ...certData } : c)));
+    const target = certificates.find(c => c.id === id);
+    if (!target) return;
+    const updatedCert = { ...target, ...certData };
+    const updated = certificates.map(c => (c.id === id ? updatedCert : c));
+    setCertificates(updated);
+    setIsSavingToCloud(true);
+    saveCertificateToCloud(updatedCert)
+      .then(() => recordCloudSync())
+      .catch(e => console.warn('Cloud sync error:', e))
+      .finally(() => setIsSavingToCloud(false));
   };
 
   const deleteCertificate = (id: string) => {
-    setCertificates(prev => prev.filter(c => c.id !== id));
+    const updated = certificates.filter(c => c.id !== id);
+    setCertificates(updated);
+    setIsSavingToCloud(true);
+    deleteCertificateFromCloud(id)
+      .then(() => recordCloudSync())
+      .catch(e => console.warn('Cloud sync error:', e))
+      .finally(() => setIsSavingToCloud(false));
   };
 
   // Gallery CRUD
@@ -312,15 +486,36 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       id: `gal_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
       createdAt: new Date().toISOString()
     };
-    setGallery(prev => [newPhoto, ...prev]);
+    const updated = [newPhoto, ...gallery];
+    setGallery(updated);
+    setIsSavingToCloud(true);
+    saveGalleryPhotoToCloud(newPhoto)
+      .then(() => recordCloudSync())
+      .catch(e => console.warn('Cloud sync error:', e))
+      .finally(() => setIsSavingToCloud(false));
   };
 
   const updateGalleryPhoto = (id: string, photoData: Partial<GalleryPhoto>) => {
-    setGallery(prev => prev.map(g => (g.id === id ? { ...g, ...photoData } : g)));
+    const target = gallery.find(g => g.id === id);
+    if (!target) return;
+    const updatedPhoto = { ...target, ...photoData };
+    const updated = gallery.map(g => (g.id === id ? updatedPhoto : g));
+    setGallery(updated);
+    setIsSavingToCloud(true);
+    saveGalleryPhotoToCloud(updatedPhoto)
+      .then(() => recordCloudSync())
+      .catch(e => console.warn('Cloud sync error:', e))
+      .finally(() => setIsSavingToCloud(false));
   };
 
   const deleteGalleryPhoto = (id: string) => {
-    setGallery(prev => prev.filter(g => g.id !== id));
+    const updated = gallery.filter(g => g.id !== id);
+    setGallery(updated);
+    setIsSavingToCloud(true);
+    deleteGalleryPhotoFromCloud(id)
+      .then(() => recordCloudSync())
+      .catch(e => console.warn('Cloud sync error:', e))
+      .finally(() => setIsSavingToCloud(false));
   };
 
   // School Photos CRUD
@@ -330,66 +525,124 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       id: `sch_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
       createdAt: new Date().toISOString()
     };
-    setSchoolPhotos(prev => [newPhoto, ...prev]);
+    const updated = [newPhoto, ...schoolPhotos];
+    setSchoolPhotos(updated);
+    setIsSavingToCloud(true);
+    saveSchoolPhotoToCloud(newPhoto)
+      .then(() => recordCloudSync())
+      .catch(e => console.warn('Cloud sync error:', e))
+      .finally(() => setIsSavingToCloud(false));
   };
 
   const updateSchoolPhoto = (id: string, photoData: Partial<SchoolPhoto>) => {
-    setSchoolPhotos(prev => prev.map(s => (s.id === id ? { ...s, ...photoData } : s)));
+    const target = schoolPhotos.find(s => s.id === id);
+    if (!target) return;
+    const updatedPhoto = { ...target, ...photoData };
+    const updated = schoolPhotos.map(s => (s.id === id ? updatedPhoto : s));
+    setSchoolPhotos(updated);
+    setIsSavingToCloud(true);
+    saveSchoolPhotoToCloud(updatedPhoto)
+      .then(() => recordCloudSync())
+      .catch(e => console.warn('Cloud sync error:', e))
+      .finally(() => setIsSavingToCloud(false));
   };
 
   const deleteSchoolPhoto = (id: string) => {
-    setSchoolPhotos(prev => prev.filter(s => s.id !== id));
+    const updated = schoolPhotos.filter(s => s.id !== id);
+    setSchoolPhotos(updated);
+    setIsSavingToCloud(true);
+    deleteSchoolPhotoFromCloud(id)
+      .then(() => recordCloudSync())
+      .catch(e => console.warn('Cloud sync error:', e))
+      .finally(() => setIsSavingToCloud(false));
   };
 
-  // Testimonial CRUD
+  // Testimonials CRUD
   const addTestimonial = (itemData: Omit<Testimonial, 'id' | 'createdAt'>) => {
     const newTestimonial: Testimonial = {
       ...itemData,
       id: `test_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
       createdAt: new Date().toISOString()
     };
-    setTestimonials(prev => [newTestimonial, ...prev]);
+    const updated = [newTestimonial, ...testimonials];
+    setTestimonials(updated);
+    setIsSavingToCloud(true);
+    saveTestimonialToCloud(newTestimonial)
+      .then(() => recordCloudSync())
+      .catch(e => console.warn('Cloud sync error:', e))
+      .finally(() => setIsSavingToCloud(false));
   };
 
   const updateTestimonial = (id: string, itemData: Partial<Testimonial>) => {
-    setTestimonials(prev => prev.map(t => (t.id === id ? { ...t, ...itemData } : t)));
+    const target = testimonials.find(t => t.id === id);
+    if (!target) return;
+    const updatedTest = { ...target, ...itemData };
+    const updated = testimonials.map(t => (t.id === id ? updatedTest : t));
+    setTestimonials(updated);
+    setIsSavingToCloud(true);
+    saveTestimonialToCloud(updatedTest)
+      .then(() => recordCloudSync())
+      .catch(e => console.warn('Cloud sync error:', e))
+      .finally(() => setIsSavingToCloud(false));
   };
 
   const deleteTestimonial = (id: string) => {
-    setTestimonials(prev => prev.filter(t => t.id !== id));
+    const updated = testimonials.filter(t => t.id !== id);
+    setTestimonials(updated);
+    setIsSavingToCloud(true);
+    deleteTestimonialFromCloud(id)
+      .then(() => recordCloudSync())
+      .catch(e => console.warn('Cloud sync error:', e))
+      .finally(() => setIsSavingToCloud(false));
   };
 
   // Messages
-  const sendMessage = (messageData: Omit<ContactMessage, 'id' | 'date' | 'read'>) => {
+  const sendMessage = async (messageData: Omit<ContactMessage, 'id' | 'date' | 'read'>) => {
     const newMsg: ContactMessage = {
       ...messageData,
       id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
       date: new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }),
       read: false
     };
-    setMessages(prev => [newMsg, ...prev]);
+    const updated = [newMsg, ...messages];
+    setMessages(updated);
+    try {
+      await saveContactMessageToCloud(newMsg);
+      recordCloudSync();
+    } catch (err) {
+      console.warn('Contact message firestore write notice:', err);
+    }
   };
 
   const toggleMessageRead = (id: string) => {
-    setMessages(prev => prev.map(m => (m.id === id ? { ...m, read: !m.read } : m)));
+    const target = messages.find(m => m.id === id);
+    if (!target) return;
+    const newRead = !target.read;
+    const updated = messages.map(m => (m.id === id ? { ...m, read: newRead } : m));
+    setMessages(updated);
+    updateMessageInCloud(id, { read: newRead })
+      .then(() => recordCloudSync())
+      .catch(e => console.warn('Cloud sync error:', e));
   };
 
   const replyToMessage = (id: string, replyText: string) => {
-    setMessages(prev => prev.map(m => {
-      if (m.id === id) {
-        const replies = m.replies || [];
-        return {
-          ...m,
-          read: true,
-          replies: [...replies, { date: new Date().toLocaleString(), text: replyText }]
-        };
-      }
-      return m;
-    }));
+    const target = messages.find(m => m.id === id);
+    if (!target) return;
+    const replies = target.replies || [];
+    const newReplies = [...replies, { date: new Date().toLocaleString(), text: replyText }];
+    const updated = messages.map(m => (m.id === id ? { ...m, read: true, replies: newReplies } : m));
+    setMessages(updated);
+    updateMessageInCloud(id, { read: true, replies: newReplies })
+      .then(() => recordCloudSync())
+      .catch(e => console.warn('Cloud sync error:', e));
   };
 
   const deleteMessage = (id: string) => {
-    setMessages(prev => prev.filter(m => m.id !== id));
+    const updated = messages.filter(m => m.id !== id);
+    setMessages(updated);
+    deleteMessageFromCloud(id)
+      .then(() => recordCloudSync())
+      .catch(e => console.warn('Cloud sync error:', e));
   };
 
   const resetToDefaults = () => {
@@ -403,6 +656,25 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setSettings(initialSettings);
     setHeaderTabs(initialHeaderTabs);
     setHeroTabs(initialHeroFeatureTabs);
+    setIsSavingToCloud(true);
+    seedModularDataToFirestore({
+      profile: initialProfile,
+      services: initialServices,
+      education: initialEducation,
+      skills: initialSkills,
+      projects: initialProjects,
+      certificates: initialCertificates,
+      gallery: initialGallery,
+      schoolPhotos: initialSchoolPhotos,
+      testimonials: initialTestimonials,
+      messages: initialMessages,
+      settings: initialSettings,
+      headerTabs: initialHeaderTabs,
+      heroTabs: initialHeroFeatureTabs
+    })
+      .then(() => recordCloudSync())
+      .catch(e => console.warn('Reset sync error:', e))
+      .finally(() => setIsSavingToCloud(false));
   };
 
   return (
@@ -425,6 +697,15 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         activeAdminView,
         selectedCertificate,
         selectedPhoto,
+        isAdminAuthenticated,
+        isLoginModalOpen,
+        setIsLoginModalOpen,
+        adminLogin,
+        adminLogout,
+        openAdminSafely,
+        isFirebaseConnected,
+        isSavingToCloud,
+        lastCloudSync,
         setAdminOpen,
         setActiveAdminView,
         setSelectedCertificate,

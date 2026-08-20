@@ -83,15 +83,6 @@ export const Hero: React.FC = () => {
       id="home" 
       className="relative min-h-screen pt-20 sm:pt-24 pb-12 sm:pb-16 px-2 sm:px-4 md:px-6 lg:px-8 flex items-center justify-center overflow-hidden"
     >
-      {/* Hidden File Input for Direct Profile Photo Upload */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        onChange={handleProfilePhotoUpload}
-        className="hidden"
-        id="hero-direct-photo-upload"
-      />
 
       {/* Main Futuristic Container with Mirror Reflective Frame */}
       <div className="w-full max-w-[1400px] mx-auto relative z-10">
@@ -203,16 +194,13 @@ export const Hero: React.FC = () => {
               })()}
 
               {/* POSITION 2: FRAMELESS NATURAL PROFILE PHOTO (No circle, no enclosing frame) */}
-              <div className="flex flex-col items-center justify-center text-center relative py-1 min-h-[160px] sm:min-h-[180px] group w-full">
+              <div className="flex flex-col items-center justify-center text-center relative py-1 min-h-[160px] sm:min-h-[180px] w-full">
                 
                 {/* Photo Display As-Is without circle or frame */}
                 <div className="relative w-full flex-1 flex flex-col items-center justify-center mb-1">
                   
                   {/* Natural Frameless Photo */}
-                  <div 
-                    onClick={() => fileInputRef.current?.click()}
-                    className="relative w-full max-w-[160px] sm:max-w-[190px] flex items-center justify-center cursor-pointer transition-transform duration-300 group-hover:scale-105"
-                  >
+                  <div className="relative w-full max-w-[160px] sm:max-w-[190px] flex items-center justify-center transition-transform duration-300">
                     {profile.profilePhoto ? (
                       <img
                         src={profile.profilePhoto}
@@ -228,27 +216,7 @@ export const Hero: React.FC = () => {
                         </span>
                       </div>
                     )}
-
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
-                      <Camera className="w-5 h-5 text-cyan-200" />
-                    </div>
                   </div>
-
-                  {/* Direct Upload Badge */}
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="absolute -top-1 bg-gradient-to-r from-cyan-400 via-blue-500 to-pink-500 text-white text-[8px] font-orbitron font-bold px-2.5 py-0.5 rounded-full shadow-[0_0_12px_rgba(0,229,255,0.9)] flex items-center gap-1 z-20 cursor-pointer"
-                  >
-                    <Upload className="w-2.5 h-2.5" />
-                    <span>Upload</span>
-                  </button>
-
-                  {uploadSuccess && (
-                    <div className="absolute -bottom-1 bg-emerald-500 text-white text-[7px] font-mono font-bold px-2 py-0.5 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.9)] flex items-center gap-0.5 animate-in fade-in z-20">
-                      <Check className="w-2 h-2" />
-                      <span>Saved!</span>
-                    </div>
-                  )}
                 </div>
 
                 {/* Signature & Subtitle under Photo */}

@@ -15,6 +15,7 @@ import { Footer } from './components/Footer';
 import { CertificateModal } from './components/CertificateModal';
 import { PhotoModal } from './components/PhotoModal';
 import { AdminLayout } from './components/admin/AdminLayout';
+import { AdminLoginModal } from './components/admin/AdminLoginModal';
 
 export default function App() {
   return (
@@ -72,6 +73,9 @@ export default function App() {
         {/* Interactive Modals */}
         <CertificateModal />
         <PhotoModal />
+
+        {/* Admin Login Modal (Password: Lionel191@) */}
+        <AdminLoginModal />
 
         {/* Full Admin Content Management System */}
         <AdminLayout />

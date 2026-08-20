@@ -4,6 +4,7 @@ import { usePortfolio } from '../context/PortfolioContext';
 interface Card3DProps {
   children: React.ReactNode;
   className?: string;
+  innerClassName?: string;
   glowColor?: 'cyan' | 'pink' | 'blue' | 'purple' | 'none';
   id?: string;
   onClick?: () => void;
@@ -12,6 +13,7 @@ interface Card3DProps {
 export const Card3D: React.FC<Card3DProps> = ({
   children,
   className = '',
+  innerClassName = 'p-6 sm:p-7',
   glowColor = 'cyan',
   id,
   onClick
@@ -79,7 +81,7 @@ export const Card3D: React.FC<Card3DProps> = ({
       className={`perspective-1000 transition-transform duration-200 ease-out ${className}`}
     >
       <div
-        className="relative rounded-2xl p-6 sm:p-7 transform-style-3d transition-all duration-300 backdrop-blur-xl"
+        className={`relative rounded-2xl ${innerClassName} transform-style-3d transition-all duration-300 backdrop-blur-xl`}
         style={{
           transform: settings.enable3DEffects && isHovered
             ? `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateZ(12px) scale3d(1.02, 1.02, 1.02)`

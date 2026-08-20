@@ -1,14 +1,14 @@
 /**
  * Client-side safe image compressor & optimizer
- * Resizes high-resolution camera photos to web-optimal dimensions (~1000-1280px)
- * and compresses them so they save instantly in browser state without triggering
- * localStorage QuotaExceededError or blank-page memory issues.
+ * Resizes camera photos to web-optimal dimensions (~800-960px)
+ * and compresses them so they save instantly in Firestore and browser storage
+ * without triggering Firestore 1MB document limit or storage errors.
  */
 export async function optimizeImage(
   fileOrDataUrl: File | string,
-  maxWidth = 1280,
-  maxHeight = 1280,
-  quality = 0.82
+  maxWidth = 960,
+  maxHeight = 960,
+  quality = 0.78
 ): Promise<string> {
   return new Promise((resolve) => {
     // If it's a file, convert to object URL or FileReader first
@@ -26,6 +26,11 @@ export async function optimizeImage(
 
     getSourceUrl()
       .then((src) => {
+        if (!src) {
+          resolve('');
+          return;
+        }
+
         const img = new Image();
         img.crossOrigin = 'anonymous';
 
@@ -33,7 +38,7 @@ export async function optimizeImage(
           try {
             let { width, height } = img;
 
-            // If image is already smaller than max dimensions, check if we need compression
+            // Constrain dimensions
             if (width > maxWidth || height > maxHeight) {
               const ratio = Math.min(maxWidth / width, maxHeight / height);
               width = Math.round(width * ratio);
@@ -46,18 +51,31 @@ export async function optimizeImage(
 
             const ctx = canvas.getContext('2d');
             if (!ctx) {
-              resolve(src); // fallback to original
+              resolve(src);
               return;
             }
 
-            // High-quality image rendering
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
             ctx.drawImage(img, 0, 0, width, height);
 
             // Compress to web-friendly JPEG
-            const mimeType = 'image/jpeg';
-            const compressed = canvas.toDataURL(mimeType, quality);
+            let compressed = canvas.toDataURL('image/jpeg', quality);
+
+            // If still unusually large (>350KB base64), do a second lighter pass
+            if (compressed.length > 450000) {
+              const secondCanvas = document.createElement('canvas');
+              secondCanvas.width = Math.round(width * 0.75);
+              secondCanvas.height = Math.round(height * 0.75);
+              const secondCtx = secondCanvas.getContext('2d');
+              if (secondCtx) {
+                secondCtx.imageSmoothingEnabled = true;
+                secondCtx.imageSmoothingQuality = 'medium';
+                secondCtx.drawImage(canvas, 0, 0, secondCanvas.width, secondCanvas.height);
+                compressed = secondCanvas.toDataURL('image/jpeg', 0.70);
+              }
+            }
+
             resolve(compressed);
           } catch (err) {
             console.warn('Image optimization canvas error, fallback to raw:', err);

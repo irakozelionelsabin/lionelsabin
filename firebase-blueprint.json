@@ -1,0 +1,153 @@
+{
+  "entities": {
+    "Profile": {
+      "title": "Profile",
+      "description": "Portfolio owner personal profile and identity details",
+      "type": "object",
+      "properties": {
+        "fullName": { "type": "string", "maxLength": 200 },
+        "title": { "type": "string", "maxLength": 300 },
+        "specialty": { "type": "string", "maxLength": 300 },
+        "bio": { "type": "string", "maxLength": 3000 },
+        "aboutBio": { "type": "string", "maxLength": 5000 },
+        "profilePhoto": { "type": "string" },
+        "logoImage": { "type": "string" },
+        "logoText": { "type": "string", "maxLength": 50 },
+        "email": { "type": "string", "maxLength": 200 },
+        "whatsapp": { "type": "string", "maxLength": 100 },
+        "github": { "type": "string", "maxLength": 300 },
+        "linkedin": { "type": "string", "maxLength": 300 },
+        "location": { "type": "string", "maxLength": 200 },
+        "school": { "type": "string", "maxLength": 300 },
+        "status": { "type": "string", "maxLength": 100 },
+        "primarySchool": { "type": "string", "maxLength": 300 },
+        "seminarySchool": { "type": "string", "maxLength": 300 },
+        "tssSchool": { "type": "string", "maxLength": 300 },
+        "updatedAt": { "type": "string" }
+      }
+    },
+    "SiteSettings": {
+      "title": "SiteSettings",
+      "description": "Global website styling and configuration settings",
+      "type": "object",
+      "properties": {
+        "websiteName": { "type": "string", "maxLength": 200 },
+        "websiteTitle": { "type": "string", "maxLength": 300 },
+        "favicon": { "type": "string" },
+        "primaryColor": { "type": "string", "maxLength": 50 },
+        "secondaryColor": { "type": "string", "maxLength": 50 },
+        "accentColor": { "type": "string", "maxLength": 50 },
+        "backgroundTheme": { "type": "string", "maxLength": 100 },
+        "enable3DEffects": { "type": "boolean" },
+        "enableAnimations": { "type": "boolean" },
+        "animationIntensity": { "type": "string", "maxLength": 50 },
+        "contactPhone": { "type": "string", "maxLength": 100 },
+        "contactEmail": { "type": "string", "maxLength": 200 },
+        "adminPassword": { "type": "string", "maxLength": 200 },
+        "updatedAt": { "type": "string" }
+      }
+    },
+    "Project": {
+      "title": "Project",
+      "description": "Software development project showcasing Lionel's work",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 300 },
+        "description": { "type": "string", "maxLength": 4000 },
+        "shortDescription": { "type": "string", "maxLength": 1000 },
+        "imageUrl": { "type": "string" },
+        "technologies": { "type": "array" },
+        "githubUrl": { "type": "string", "maxLength": 500 },
+        "liveDemoUrl": { "type": "string", "maxLength": 500 },
+        "category": { "type": "string", "maxLength": 100 },
+        "featured": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["title", "category"]
+    },
+    "Certificate": {
+      "title": "Certificate",
+      "description": "Academic certificate, degree, award, or verified technical qualification",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 300 },
+        "organization": { "type": "string", "maxLength": 300 },
+        "certificateImage": { "type": "string" },
+        "certificateId": { "type": "string", "maxLength": 200 },
+        "issueDate": { "type": "string", "maxLength": 100 },
+        "expirationDate": { "type": "string", "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 3000 },
+        "verificationUrl": { "type": "string", "maxLength": 500 },
+        "relatedSkills": { "type": "array" },
+        "featured": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["title", "organization", "issueDate"]
+    },
+    "GalleryItem": {
+      "title": "GalleryItem",
+      "description": "Photo from gallery or school journey",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 300 },
+        "caption": { "type": "string", "maxLength": 3000 },
+        "imageUrl": { "type": "string" },
+        "category": { "type": "string", "maxLength": 100 },
+        "school": { "type": "string", "maxLength": 300 },
+        "year": { "type": "string", "maxLength": 50 },
+        "type": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string" }
+      }
+    },
+    "ContactMessage": {
+      "title": "ContactMessage",
+      "description": "Message submitted by visitors through public contact form",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 200 },
+        "email": { "type": "string", "maxLength": 200 },
+        "subject": { "type": "string", "maxLength": 300 },
+        "message": { "type": "string", "maxLength": 5000 },
+        "phone": { "type": "string", "maxLength": 100 },
+        "date": { "type": "string", "maxLength": 100 },
+        "read": { "type": "boolean" },
+        "reply": { "type": "string", "maxLength": 5000 }
+      },
+      "required": ["name", "email", "message"]
+    }
+  },
+  "firestore": {
+    "/portfolio/{section}": {
+      "schema": { "$ref": "#/entities/Profile" },
+      "description": "Modular portfolio singleton sections (profile, settings, tabs, services, education, skills)"
+    },
+    "/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "Software development projects"
+    },
+    "/certificates/{certificateId}": {
+      "schema": { "$ref": "#/entities/Certificate" },
+      "description": "Certificates and credentials"
+    },
+    "/gallery/{photoId}": {
+      "schema": { "$ref": "#/entities/GalleryItem" },
+      "description": "Gallery photographs"
+    },
+    "/schoolPhotos/{photoId}": {
+      "schema": { "$ref": "#/entities/GalleryItem" },
+      "description": "School journey photographs"
+    },
+    "/testimonials/{testimonialId}": {
+      "schema": { "$ref": "#/entities/ContactMessage" },
+      "description": "Client testimonials and reviews"
+    },
+    "/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/ContactMessage" },
+      "description": "Visitor contact inquiries"
+    }
+  }
+}

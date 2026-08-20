@@ -132,6 +132,7 @@ export interface SiteSettings {
   };
   contactPhone: string;
   contactEmail: string;
+  adminPassword?: string;
 
   // Starting Intro Video Configuration
   introVideo?: string;

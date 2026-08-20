@@ -50,16 +50,6 @@ export const AboutSection: React.FC = () => {
   return (
     <section id="aboutme" className="relative py-14 sm:py-20 overflow-hidden scroll-mt-20">
       <div id="about" className="sr-only"></div>
-      
-      {/* Hidden File Input for Profile Photo Upload */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        onChange={handlePhotoUpload}
-        className="hidden"
-        id="about-photo-upload"
-      />
 
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 relative z-10 space-y-12">
         
@@ -93,13 +83,10 @@ export const AboutSection: React.FC = () => {
               <div className="md:col-span-5 flex flex-col items-center justify-center text-center relative">
                 
                 {/* Natural Frameless Photo Wrapper (NO circle frame, NO square box frame) */}
-                <div className="relative group flex flex-col items-center">
+                <div className="relative flex flex-col items-center">
                   
                   {/* Photo Display As-Is without any frame or circle */}
-                  <div 
-                    onClick={() => fileInputRef.current?.click()}
-                    className="relative max-w-[280px] sm:max-w-[320px] w-full flex items-center justify-center cursor-pointer transition-transform duration-300 group-hover:scale-[1.02]"
-                  >
+                  <div className="relative max-w-[280px] sm:max-w-[320px] w-full flex items-center justify-center transition-transform duration-300">
                     {profile.profilePhoto ? (
                       <img 
                         src={profile.profilePhoto} 
@@ -113,28 +100,9 @@ export const AboutSection: React.FC = () => {
                         <span className="font-orbitron text-sm font-bold text-white">
                           {profile.fullName || 'IRAKOZE Lionel Sabin'}
                         </span>
-                        <span className="text-xs font-mono text-cyan-300 mt-1">
-                          Click to place your photo
-                        </span>
                       </div>
                     )}
-
-                    {/* Smooth Frameless Hover Action Overlay */}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-3 text-center rounded-xl">
-                      <Camera className="w-8 h-8 text-cyan-300 mb-1 drop-shadow-[0_0_10px_rgba(0,229,255,0.9)]" />
-                      <span className="text-xs font-orbitron font-bold text-white">Update Photo</span>
-                      <span className="text-[10px] text-cyan-200 font-mono">Click to choose image file</span>
-                    </div>
                   </div>
-
-                  {/* Frameless Floating Action Badge */}
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="mt-3 bg-gradient-to-r from-cyan-400 via-blue-500 to-pink-500 hover:from-cyan-300 hover:to-pink-400 text-white text-xs font-orbitron font-bold px-4 py-1.5 rounded-full shadow-[0_0_20px_rgba(0,229,255,0.8)] flex items-center gap-1.5 cursor-pointer transition-transform hover:scale-105 z-20"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>Upload Photo</span>
-                  </button>
                 </div>
 
                 {/* Signature & Title */}

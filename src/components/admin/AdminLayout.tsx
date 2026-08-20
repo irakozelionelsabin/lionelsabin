@@ -31,7 +31,11 @@ import {
   Quote,
   GraduationCap,
   Award,
-  Mail
+  Mail,
+  LogOut,
+  CloudCheck,
+  Cloud,
+  Loader2
 } from 'lucide-react';
 import { AdminView } from '../../types';
 
@@ -44,12 +48,17 @@ export const AdminLayout: React.FC = () => {
     profile, 
     messages,
     certificates,
-    resetToDefaults 
+    resetToDefaults,
+    isAdminAuthenticated,
+    adminLogout,
+    isFirebaseConnected,
+    isSavingToCloud,
+    lastCloudSync
   } = usePortfolio();
   
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-  if (!adminOpen) return null;
+  if (!adminOpen || !isAdminAuthenticated) return null;
 
   const unreadCount = messages.filter(m => !m.read).length;
 
@@ -150,6 +159,26 @@ export const AdminLayout: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+            {/* Cloud Sync Status */}
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900/90 border border-white/10 text-[11px] font-mono">
+              {isSavingToCloud ? (
+                <>
+                  <Loader2 className="w-3 h-3 text-cyan-400 animate-spin" />
+                  <span className="text-cyan-300">Syncing...</span>
+                </>
+              ) : isFirebaseConnected ? (
+                <>
+                  <Cloud className="w-3 h-3 text-emerald-400" />
+                  <span className="text-emerald-300">Cloud Synced</span>
+                </>
+              ) : (
+                <>
+                  <Cloud className="w-3 h-3 text-slate-400" />
+                  <span className="text-slate-400">Local Mode</span>
+                </>
+              )}
+            </div>
+
             {/* Reset to initial data */}
             <button
               onClick={() => {
@@ -171,8 +200,19 @@ export const AdminLayout: React.FC = () => {
               className="inline-flex items-center gap-1 px-2.5 sm:px-4 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold text-white bg-gradient-to-r from-cyan-500 to-blue-600 shadow-[0_0_15px_rgba(56,189,248,0.3)] hover:opacity-90 transition-all"
             >
               <Eye className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">View Public Site</span>
+              <span className="hidden sm:inline">View Site</span>
               <span className="sm:hidden">Site</span>
+            </button>
+
+            {/* Logout Button */}
+            <button
+              id="admin-logout-btn"
+              onClick={adminLogout}
+              className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold text-pink-300 bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/30 transition-colors"
+              title="Lock Admin Panel"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Lock</span>
             </button>
 
             <button
