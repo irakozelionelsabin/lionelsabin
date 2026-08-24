@@ -1,24 +1,43 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { 
+  initializeFirestore, 
+  getFirestore,
+  persistentLocalCache, 
+  persistentMultipleTabManager,
+  doc, 
+  getDoc 
+} from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 // Initialize Firebase once
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// CRITICAL: Initialize Firestore with the database ID specified in firebase-applet-config.json
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId || undefined);
+// CRITICAL: Initialize Firestore with resilient long-polling fallback and persistent cache
+let firestoreInstance;
+try {
+  firestoreInstance = initializeFirestore(app, {
+    experimentalAutoDetectLongPolling: true,
+    localCache: persistentLocalCache({
+      tabManager: persistentMultipleTabManager()
+    })
+  }, firebaseConfig.firestoreDatabaseId || undefined);
+} catch (e) {
+  // If already initialized in HMR or testing
+  firestoreInstance = getFirestore(app, firebaseConfig.firestoreDatabaseId || undefined);
+}
+
+export const db = firestoreInstance;
 export const auth = getAuth(app);
 
 // Connection verification as per Firebase skill
 export async function testFirestoreConnection(): Promise<boolean> {
   try {
-    await getDocFromServer(doc(db, 'portfolio', 'data'));
-    console.log('Firebase Firestore connection verified.');
-    return true;
+    const snap = await getDoc(doc(db, 'portfolio', 'profile'));
+    return snap.exists();
   } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.warn('Firestore offline or pending connection. Using cached and local storage.');
+    if (error instanceof Error && error.message.includes('offline')) {
+      console.warn('Firestore operating in local/offline cache mode.');
     }
     return false;
   }

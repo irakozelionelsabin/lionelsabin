@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { PortfolioProvider } from './context/PortfolioContext';
+import React from 'react';
+import { PortfolioProvider, usePortfolio } from './context/PortfolioContext';
+import { DynamicHeadSEO } from './components/DynamicHeadSEO';
 import { LiquidBackground } from './components/LiquidBackground';
 import { LogoPreloader } from './components/LogoPreloader';
 import { Navbar } from './components/Navbar';
@@ -17,13 +18,26 @@ import { PhotoModal } from './components/PhotoModal';
 import { AdminLayout } from './components/admin/AdminLayout';
 import { AdminLoginModal } from './components/admin/AdminLoginModal';
 
-export default function App() {
+function PortfolioAppContent() {
+  const { isSiteReady } = usePortfolio();
+
   return (
-    <PortfolioProvider>
-      {/* Spectacular Dynamic Logo Loading Preloader Animation */}
+    <>
+      {/* Dynamic SEO, Logo Favicon & Chrome Search Representation */}
+      <DynamicHeadSEO />
+
+      {/* Spectacular Dynamic Logo Loading Preloader & Video Readiness Gate */}
       <LogoPreloader />
 
-      <div className="relative min-h-screen bg-transparent text-slate-100 selection:bg-cyan-400 selection:text-black">
+      {/* Main Website Wrapper: Perfectly Hidden until 100% Prepared, then Butter-Smooth Fade In */}
+      <div 
+        id="lionel-sabin-main-app"
+        className={`relative min-h-screen bg-transparent text-slate-100 selection:bg-cyan-400 selection:text-black transition-all duration-700 ease-out ${
+          isSiteReady 
+            ? 'opacity-100 pointer-events-auto scale-100' 
+            : 'opacity-0 pointer-events-none scale-[0.99] overflow-hidden'
+        }`}
+      >
         {/* Persistent Vivid Hard-Light Liquid 3D Background */}
         <LiquidBackground />
 
@@ -80,6 +94,14 @@ export default function App() {
         {/* Full Admin Content Management System */}
         <AdminLayout />
       </div>
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <PortfolioProvider>
+      <PortfolioAppContent />
     </PortfolioProvider>
   );
 }

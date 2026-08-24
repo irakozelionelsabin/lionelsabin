@@ -69,15 +69,16 @@ export const TestimonialManager: React.FC = () => {
     e.preventDefault();
     if (!name.trim() || !testimonial.trim()) return;
 
-    const payload = {
+    const payload: Omit<Testimonial, 'id' | 'createdAt'> = {
       name: name.trim(),
       role: role.trim() || 'Collaborator',
-      company: company.trim() || undefined,
+      company: company.trim() || 'Collaborator / Peer',
       testimonial: testimonial.trim(),
-      profilePhoto: profilePhoto.trim() || undefined,
       rating,
       featured
     };
+
+    if (profilePhoto.trim()) payload.profilePhoto = profilePhoto.trim();
 
     if (editingTestimonial) {
       updateTestimonial(editingTestimonial.id, payload);

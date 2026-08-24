@@ -16,8 +16,13 @@ service cloud.firestore {
              data.message is string && data.message.size() > 0 && data.message.size() <= 5000;
     }
 
-    // Portfolio Singleton Sections (profile, settings, tabs, services, education, skills)
+    // Portfolio Singleton Sections (profile, settings, tabs, services, education, skills, videoInfo)
     match /portfolio/{docId} {
+      allow read, write: if true;
+    }
+
+    // Video chunks for intro video
+    match /introVideoChunks/{chunkId} {
       allow read, write: if true;
     }
 

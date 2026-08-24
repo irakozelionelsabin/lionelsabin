@@ -26,9 +26,35 @@ export const IntroVideoManager: React.FC = () => {
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
   const [previewModalOpen, setPreviewModalOpen] = useState<boolean>(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [videoUrlInput, setVideoUrlInput] = useState<string>('');
+  const [showUrlInput, setShowUrlInput] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const videoPlayerRef = useRef<HTMLVideoElement | null>(null);
+
+  const handleVideoUrlSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!videoUrlInput.trim()) return;
+    
+    try {
+      setIsUploading(true);
+      setUploadError(null);
+      await setIntroVideoData(videoUrlInput.trim());
+      updateSettings({
+        introVideoTitle: 'Web Video Stream',
+        introVideoEnabled: true
+      });
+      setSaveSuccess(true);
+      fireConfetti({ particleCount: 60, spread: 70, origin: { y: 0.5 } });
+      setTimeout(() => setSaveSuccess(false), 3000);
+      setVideoUrlInput('');
+      setShowUrlInput(false);
+    } catch (err: any) {
+      setUploadError(err?.message || 'Failed to save video URL');
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -250,8 +276,62 @@ export const IntroVideoManager: React.FC = () => {
                   <Upload className="w-4 h-4" />
                   <span>Choose Video File</span>
                 </div>
+
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowUrlInput(!showUrlInput);
+                    }}
+                    className="text-[11px] font-mono text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
+                  >
+                    {showUrlInput ? 'Hide Web URL Input' : 'Or paste a direct Video URL'}
+                  </button>
+                </div>
               </div>
             )}
+
+            {/* Direct Video URL Form */}
+            {showUrlInput && (
+              <form onSubmit={handleVideoUrlSubmit} className="p-4 rounded-xl bg-slate-950/70 border border-cyan-400/30 space-y-3">
+                <label className="block text-xs font-orbitron text-cyan-200">
+                  Direct Video URL (MP4 / WebM / CDN Link)
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={videoUrlInput}
+                    onChange={(e) => setVideoUrlInput(e.target.value)}
+                    placeholder="https://example.com/my-intro-video.mp4"
+                    className="flex-1 px-3 py-2 rounded-lg bg-slate-900 border border-cyan-500/30 text-white text-xs font-mono focus:outline-none focus:border-cyan-400"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!videoUrlInput.trim() || isUploading}
+                    className="px-4 py-2 rounded-lg text-xs font-orbitron font-bold text-slate-900 bg-cyan-400 hover:bg-cyan-300 disabled:opacity-50 cursor-pointer"
+                  >
+                    Save URL
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Cross-Device Cloud Persistence Status */}
+            <div className="p-3.5 rounded-xl bg-gradient-to-r from-cyan-950/40 via-blue-950/30 to-purple-950/40 border border-cyan-400/30 flex items-start gap-3">
+              <div className="w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0 mt-0.5">
+                <Check className="w-4 h-4" />
+              </div>
+              <div className="space-y-0.5">
+                <h4 className="text-xs font-orbitron font-bold text-white flex items-center gap-2">
+                  <span>Multi-Device Cloud Persistence</span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-cyan-400/20 text-cyan-300 font-mono">Firestore Database</span>
+                </h4>
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  Intro videos and logos are stored in the cloud database and synced across both <strong>mobile phones</strong> and <strong>computers</strong>.
+                </p>
+              </div>
+            </div>
 
             {isUploading && (
               <div className="p-4 rounded-xl bg-cyan-950/60 border border-cyan-400/40 text-center space-y-2">

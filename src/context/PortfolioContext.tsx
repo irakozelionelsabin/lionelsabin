@@ -52,7 +52,9 @@ import {
   saveContactMessageToCloud,
   updateMessageInCloud,
   deleteMessageFromCloud,
-  seedModularDataToFirestore
+  seedModularDataToFirestore,
+  saveIntroVideoToCloud,
+  deleteIntroVideoFromCloud
 } from '../firebase/firestoreService';
 
 interface PortfolioContextType {
@@ -86,6 +88,11 @@ interface PortfolioContextType {
   isFirebaseConnected: boolean;
   isSavingToCloud: boolean;
   lastCloudSync: string | null;
+
+  // Initial Loading & Site Readiness Gate
+  isInitialHydrated: boolean;
+  isSiteReady: boolean;
+  setIsSiteReady: (ready: boolean) => void;
 
   // Navigation & View controls
   setAdminOpen: (open: boolean) => void;
@@ -207,6 +214,10 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [isSavingToCloud, setIsSavingToCloud] = useState<boolean>(false);
   const [lastCloudSync, setLastCloudSync] = useState<string | null>(null);
 
+  // Initial Loading & Site Readiness Gate
+  const [isInitialHydrated, setIsInitialHydrated] = useState<boolean>(false);
+  const [isSiteReady, setIsSiteReady] = useState<boolean>(false);
+
   const initialFirestoreHydrated = useRef(false);
 
   const recordCloudSync = () => {
@@ -218,6 +229,21 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   useEffect(() => {
     const initFirestore = async () => {
       try {
+        // Step 1: Rapid local storage / IndexedDB check for immediate rendering
+        try {
+          const localVideo = await getMediaItem('ils_starting_intro_video');
+          if (localVideo) {
+            setSettings(prev => ({
+              ...prev,
+              introVideo: localVideo,
+              introVideoEnabled: prev.introVideoEnabled ?? true
+            }));
+          }
+        } catch (e) {
+          console.warn('Local media storage check notice:', e);
+        }
+
+        // Step 2: Full cloud database hydration across all collections
         const cloudData = await loadAllFromFirestore();
         if (cloudData) {
           if (cloudData.profile) setProfile(cloudData.profile);
@@ -238,6 +264,17 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           }
           if (cloudData.headerTabs) setHeaderTabs(cloudData.headerTabs);
           if (cloudData.heroTabs) setHeroTabs(cloudData.heroTabs);
+
+          // If cloud has an intro video, update state and cache locally for multi-device support
+          if (cloudData.introVideo) {
+            setSettings(prev => ({
+              ...prev,
+              introVideo: cloudData.introVideo,
+              introVideoEnabled: true
+            }));
+            await saveMediaItem('ils_starting_intro_video', cloudData.introVideo);
+          }
+
           setIsFirebaseConnected(true);
           setLastCloudSync(new Date().toLocaleTimeString());
         } else {
@@ -260,26 +297,15 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           setIsFirebaseConnected(true);
           setLastCloudSync(new Date().toLocaleTimeString());
         }
-        initialFirestoreHydrated.current = true;
       } catch (err) {
         console.warn('Initial Firestore read notice:', err);
+      } finally {
+        initialFirestoreHydrated.current = true;
+        setIsInitialHydrated(true);
       }
     };
 
     initFirestore();
-
-    // Load persistent video on mount from IndexedDB if present
-    getMediaItem('ils_starting_intro_video').then((videoData) => {
-      if (videoData) {
-        setSettings(prev => ({
-          ...prev,
-          introVideo: videoData,
-          introVideoEnabled: prev.introVideoEnabled ?? true
-        }));
-      }
-    }).catch(err => {
-      console.warn('Could not load intro video from media storage:', err);
-    });
   }, []);
 
   // Safe Sync to local storage mirrors
@@ -347,12 +373,24 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const setIntroVideoData = async (videoUrl: string | null) => {
     if (videoUrl) {
+      // 1. Instant local cache in IndexedDB
       await saveMediaItem('ils_starting_intro_video', videoUrl);
       setSettings(prev => ({
         ...prev,
         introVideo: videoUrl,
         introVideoEnabled: true
       }));
+
+      // 2. Multi-device cloud sync in Firestore
+      setIsSavingToCloud(true);
+      try {
+        await saveIntroVideoToCloud(videoUrl);
+        recordCloudSync();
+      } catch (err) {
+        console.warn('Cloud video sync note:', err);
+      } finally {
+        setIsSavingToCloud(false);
+      }
     } else {
       await removeMediaItem('ils_starting_intro_video');
       setSettings(prev => ({
@@ -360,6 +398,16 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         introVideo: undefined,
         introVideoEnabled: false
       }));
+
+      setIsSavingToCloud(true);
+      try {
+        await deleteIntroVideoFromCloud();
+        recordCloudSync();
+      } catch (err) {
+        console.warn('Cloud video removal note:', err);
+      } finally {
+        setIsSavingToCloud(false);
+      }
     }
   };
 
@@ -706,6 +754,9 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         isFirebaseConnected,
         isSavingToCloud,
         lastCloudSync,
+        isInitialHydrated,
+        isSiteReady,
+        setIsSiteReady,
         setAdminOpen,
         setActiveAdminView,
         setSelectedCertificate,

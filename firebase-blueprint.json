@@ -118,12 +118,27 @@
         "reply": { "type": "string", "maxLength": 5000 }
       },
       "required": ["name", "email", "message"]
+    },
+    "MediaChunk": {
+      "title": "MediaChunk",
+      "description": "Chunked video media part for cross-device cloud persistence",
+      "type": "object",
+      "properties": {
+        "index": { "type": "number" },
+        "totalChunks": { "type": "number" },
+        "data": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      }
     }
   },
   "firestore": {
     "/portfolio/{section}": {
       "schema": { "$ref": "#/entities/Profile" },
-      "description": "Modular portfolio singleton sections (profile, settings, tabs, services, education, skills)"
+      "description": "Modular portfolio singleton sections (profile, settings, tabs, services, education, skills, videoInfo)"
+    },
+    "/introVideoChunks/{chunkId}": {
+      "schema": { "$ref": "#/entities/MediaChunk" },
+      "description": "Chunked video files for cross-device intro video persistence"
     },
     "/projects/{projectId}": {
       "schema": { "$ref": "#/entities/Project" },

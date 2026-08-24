@@ -90,16 +90,17 @@ export const ProjectManager: React.FC = () => {
       .map(t => t.trim())
       .filter(Boolean);
 
-    const projectPayload = {
+    const projectPayload: Omit<Project, 'id' | 'createdAt'> = {
       name: name.trim(),
       description: description.trim(),
       technologies: techArray.length > 0 ? techArray : ['Web Development'],
       image: image.trim(),
-      githubUrl: githubUrl.trim() || undefined,
-      liveDemoUrl: liveDemoUrl.trim() || undefined,
       category: category.trim() || 'Web App',
       featured
     };
+
+    if (githubUrl.trim()) projectPayload.githubUrl = githubUrl.trim();
+    if (liveDemoUrl.trim()) projectPayload.liveDemoUrl = liveDemoUrl.trim();
 
     if (editingProject) {
       updateProject(editingProject.id, projectPayload);

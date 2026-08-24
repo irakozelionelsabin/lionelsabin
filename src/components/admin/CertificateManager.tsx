@@ -174,18 +174,19 @@ export const CertificateManager: React.FC = () => {
       .map(s => s.trim())
       .filter(Boolean);
 
-    const payload = {
+    const payload: Omit<Certificate, 'id' | 'createdAt'> = {
       title: title.trim(),
       organization: organization.trim(),
-      certificateImage: certificateImage.trim() || undefined,
-      certificateId: certificateId.trim() || undefined,
       issueDate: issueDate.trim() || 'Documented',
-      expirationDate: expirationDate.trim() || undefined,
-      description: description.trim() || undefined,
-      verificationUrl: verificationUrl.trim() || undefined,
-      relatedSkills: skillsArray.length > 0 ? skillsArray : undefined,
       featured
     };
+
+    if (certificateImage.trim()) payload.certificateImage = certificateImage.trim();
+    if (certificateId.trim()) payload.certificateId = certificateId.trim();
+    if (expirationDate.trim()) payload.expirationDate = expirationDate.trim();
+    if (description.trim()) payload.description = description.trim();
+    if (verificationUrl.trim()) payload.verificationUrl = verificationUrl.trim();
+    if (skillsArray.length > 0) payload.relatedSkills = skillsArray;
 
     if (editingCert) {
       updateCertificate(editingCert.id, payload);
