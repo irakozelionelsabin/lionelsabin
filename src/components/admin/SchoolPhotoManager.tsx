@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { usePortfolio } from '../../context/PortfolioContext';
-import { optimizeImage } from '../../utils/imageOptimizer';
+import { uploadImagePermanently } from '../../firebase/cloudImageUpload';
 import { 
   GraduationCap, 
   Upload, 
@@ -27,6 +27,7 @@ export const SchoolPhotoManager: React.FC = () => {
   const [imageUrl, setImageUrl] = useState('');
   const [category, setCategory] = useState('Academic Life');
   const [isProcessingImage, setIsProcessingImage] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
 
   const resetForm = () => {
@@ -37,6 +38,7 @@ export const SchoolPhotoManager: React.FC = () => {
     setCategory('Academic Life');
     setEditingPhoto(null);
     setIsProcessingImage(false);
+    setUploadProgress(0);
   };
 
   const handleOpenAdd = () => {
@@ -52,6 +54,7 @@ export const SchoolPhotoManager: React.FC = () => {
     setImageUrl(photo.imageUrl);
     setCategory(photo.category);
     setIsProcessingImage(false);
+    setUploadProgress(0);
     setModalOpen(true);
   };
 
@@ -61,10 +64,11 @@ export const SchoolPhotoManager: React.FC = () => {
 
     try {
       setIsProcessingImage(true);
-      const optimized = await optimizeImage(file, 1280, 1280, 0.82);
-      setImageUrl(optimized);
+      setUploadProgress(5);
+      const uploaded = await uploadImagePermanently(file, (p) => setUploadProgress(p));
+      setImageUrl(uploaded.downloadURL);
     } catch (err) {
-      console.error('School photo compression error:', err);
+      console.error('School photo upload error:', err);
     } finally {
       setIsProcessingImage(false);
     }
@@ -314,9 +318,17 @@ export const SchoolPhotoManager: React.FC = () => {
 
                 {/* LIVE PHOTO PREVIEW BEFORE SAVING */}
                 {isProcessingImage ? (
-                  <div className="mt-3 p-6 rounded-2xl bg-black/40 border border-cyan-500/30 flex flex-col items-center justify-center gap-2">
+                  <div className="mt-3 p-6 rounded-2xl bg-black/40 border border-cyan-500/30 flex flex-col items-center justify-center gap-2.5">
                     <Loader2 className="w-6 h-6 text-cyan-400 animate-spin" />
-                    <span className="text-xs font-mono text-cyan-300">Processing & optimizing school photo...</span>
+                    <span className="text-xs font-mono text-cyan-300">
+                      Uploading permanently to Firebase Cloud ({uploadProgress}%)...
+                    </span>
+                    <div className="w-full max-w-xs h-2 rounded-full bg-slate-900 overflow-hidden border border-white/10">
+                      <div
+                        className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-200"
+                        style={{ width: `${Math.max(5, uploadProgress)}%` }}
+                      />
+                    </div>
                   </div>
                 ) : imageUrl ? (
                   <div className="mt-3 p-3 rounded-2xl bg-black/40 border border-cyan-500/30 space-y-2">

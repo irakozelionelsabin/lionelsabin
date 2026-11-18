@@ -13,6 +13,7 @@ import { MessageManager } from './MessageManager';
 import { HeaderTabsManager } from './HeaderTabsManager';
 import { HeroTabsManager } from './HeroTabsManager';
 import { IntroVideoManager } from './IntroVideoManager';
+import { CloudImageUploader } from './CloudImageUploader';
 import { 
   X, 
   Menu, 
@@ -23,6 +24,7 @@ import {
   Film,
   ExternalLink,
   LayoutDashboard,
+  UploadCloud,
   UserCheck,
   Layers,
   Settings,
@@ -71,6 +73,7 @@ export const AdminLayout: React.FC = () => {
     badge?: number;
   }> = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'cloud-uploader', label: 'Cloud Upload', icon: UploadCloud },
     { id: 'profile', label: 'Profile', icon: UserCheck },
     { id: 'certificates', label: 'Certificates', icon: Award, badge: certificates.length },
     { id: 'header-tabs', label: 'Nav Tabs', icon: Layers },
@@ -88,6 +91,8 @@ export const AdminLayout: React.FC = () => {
     switch (activeAdminView) {
       case 'dashboard':
         return <AdminDashboard />;
+      case 'cloud-uploader':
+        return <CloudImageUploader />;
       case 'profile':
         return <ProfileManager />;
       case 'header-tabs':

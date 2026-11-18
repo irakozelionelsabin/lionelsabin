@@ -2,6 +2,7 @@ import React from 'react';
 import { usePortfolio } from '../../context/PortfolioContext';
 import { 
   LayoutDashboard, 
+  UploadCloud,
   UserCheck, 
   Settings, 
   Layers,
@@ -44,6 +45,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ onCloseMobile }) => 
     badge?: number;
   }> = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'cloud-uploader', label: 'Permanent Cloud Upload', icon: UploadCloud },
     { id: 'profile', label: 'Profile & Logo', icon: UserCheck },
     { id: 'header-tabs', label: 'Nav Header Tabs', icon: Layers },
     { id: 'hero-tabs', label: 'Hero Feature Tabs', icon: Sparkles },

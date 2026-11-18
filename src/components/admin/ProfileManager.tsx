@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { usePortfolio } from '../../context/PortfolioContext';
-import { optimizeImage } from '../../utils/imageOptimizer';
+import { uploadImagePermanently } from '../../firebase/cloudImageUpload';
 import { 
   User, 
   Save, 
@@ -10,7 +10,8 @@ import {
   Image as ImageIcon, 
   RotateCcw,
   Play,
-  Loader2
+  Loader2,
+  HardDrive
 } from 'lucide-react';
 import { LogoPreloader } from '../LogoPreloader';
 
@@ -20,7 +21,9 @@ export const ProfileManager: React.FC = () => {
   const [saved, setSaved] = useState(false);
   const [previewingAnimation, setPreviewingAnimation] = useState(false);
   const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
+  const [photoProgress, setPhotoProgress] = useState(0);
   const [isProcessingLogo, setIsProcessingLogo] = useState(false);
+  const [logoProgress, setLogoProgress] = useState(0);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -32,10 +35,14 @@ export const ProfileManager: React.FC = () => {
     if (file) {
       try {
         setIsProcessingPhoto(true);
-        const optimized = await optimizeImage(file, 1000, 1000, 0.85);
-        setFormData(prev => ({ ...prev, profilePhoto: optimized }));
+        setPhotoProgress(5);
+        const uploaded = await uploadImagePermanently(file, (p) => setPhotoProgress(p));
+        setFormData(prev => ({ ...prev, profilePhoto: uploaded.downloadURL }));
+        updateProfile({ profilePhoto: uploaded.downloadURL });
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3000);
       } catch (err) {
-        console.error('Profile photo optimization error:', err);
+        console.error('Profile photo cloud upload error:', err);
       } finally {
         setIsProcessingPhoto(false);
       }
@@ -47,10 +54,14 @@ export const ProfileManager: React.FC = () => {
     if (file) {
       try {
         setIsProcessingLogo(true);
-        const optimized = await optimizeImage(file, 800, 800, 0.88);
-        setFormData(prev => ({ ...prev, logoImage: optimized }));
+        setLogoProgress(5);
+        const uploaded = await uploadImagePermanently(file, (p) => setLogoProgress(p));
+        setFormData(prev => ({ ...prev, logoImage: uploaded.downloadURL }));
+        updateProfile({ logoImage: uploaded.downloadURL });
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3000);
       } catch (err) {
-        console.error('Logo image optimization error:', err);
+        console.error('Logo cloud upload error:', err);
       } finally {
         setIsProcessingLogo(false);
       }
@@ -182,7 +193,7 @@ export const ProfileManager: React.FC = () => {
             {/* Profile Photo Upload */}
             <div className="space-y-2.5 sm:col-span-2 pt-2 border-t border-white/10">
               <label className="block text-xs font-mono text-slate-300 uppercase">
-                Profile Photo (Independent / Borderless)
+                Profile Photo (Permanent Firebase Cloud Upload)
               </label>
               <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
                 <input
@@ -191,17 +202,29 @@ export const ProfileManager: React.FC = () => {
                   accept="image/*"
                   onChange={handleImageUpload}
                   className="hidden"
+                  disabled={isProcessingPhoto}
                 />
                 <label
                   htmlFor="profile-photo-upload"
-                  className="px-3.5 py-2 sm:py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-cyan-300 border border-cyan-500/30 cursor-pointer flex items-center gap-2"
+                  className={`px-3.5 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/30 text-xs font-bold text-cyan-300 border border-cyan-500/40 cursor-pointer flex items-center gap-2 transition-all shadow-[0_0_12px_rgba(0,229,255,0.2)] ${
+                    isProcessingPhoto ? 'opacity-60 pointer-events-none' : ''
+                  }`}
                 >
-                  <Upload className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  <span>Choose Profile Photo</span>
+                  {isProcessingPhoto ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Uploading to Cloud ({photoProgress}%)...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      <span>{formData.profilePhoto ? 'Upload New Photo' : 'Upload Profile Photo'}</span>
+                    </>
+                  )}
                 </label>
-                {formData.profilePhoto && (
+                {formData.profilePhoto && !isProcessingPhoto && (
                   <>
-                    <span className="text-[11px] sm:text-xs text-emerald-400 font-mono">Photo Attached ✓</span>
+                    <span className="text-[11px] sm:text-xs text-emerald-400 font-mono">Permanent Cloud URL Attached ✓</span>
                     <button
                       type="button"
                       onClick={handleRemoveProfilePhoto}
@@ -212,6 +235,36 @@ export const ProfileManager: React.FC = () => {
                   </>
                 )}
               </div>
+
+              {/* Upload Progress Bar */}
+              {isProcessingPhoto && (
+                <div className="w-full max-w-sm pt-2">
+                  <div className="h-1.5 rounded-full bg-slate-900 overflow-hidden border border-white/10">
+                    <div
+                      className="h-full bg-gradient-to-r from-cyan-400 to-pink-500 transition-all duration-200"
+                      style={{ width: `${Math.max(5, photoProgress)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Profile Photo Live Preview */}
+              {formData.profilePhoto && (
+                <div className="pt-2 flex items-center gap-3">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-slate-900 border border-cyan-400/40 shadow-[0_0_15px_rgba(0,229,255,0.25)] shrink-0">
+                    <img
+                      src={formData.profilePhoto}
+                      alt="Profile preview"
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                  <div className="text-[11px] font-mono text-slate-400 truncate max-w-xs sm:max-w-md">
+                    <span className="text-cyan-300 font-semibold block mb-0.5">Permanent Photo URL:</span>
+                    <span className="truncate block opacity-80">{formData.profilePhoto}</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

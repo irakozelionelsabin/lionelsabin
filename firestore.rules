@@ -41,6 +41,11 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // Permanent Cloud Uploads collection
+    match /uploads/{uploadId} {
+      allow read, write: if true;
+    }
+
     // School Photos collection
     match /schoolPhotos/{photoId} {
       allow read, write: if true;

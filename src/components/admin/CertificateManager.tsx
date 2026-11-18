@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { usePortfolio } from '../../context/PortfolioContext';
-import { optimizeImage } from '../../utils/imageOptimizer';
+import { uploadImagePermanently } from '../../firebase/cloudImageUpload';
 import { fireConfetti } from '../../utils/confetti';
 import { 
   Award, 
@@ -38,6 +38,7 @@ export const CertificateManager: React.FC = () => {
   const [relatedSkills, setRelatedSkills] = useState('');
   const [featured, setFeatured] = useState(false);
   const [isProcessingImage, setIsProcessingImage] = useState(false);
+  const [singleUploadProgress, setSingleUploadProgress] = useState(0);
 
   // Bulk Upload State
   const [isBulkUploading, setIsBulkUploading] = useState(false);
@@ -65,6 +66,7 @@ export const CertificateManager: React.FC = () => {
     setFeatured(false);
     setEditingCert(null);
     setIsProcessingImage(false);
+    setSingleUploadProgress(0);
   };
 
   const handleOpenAdd = () => {
@@ -85,6 +87,7 @@ export const CertificateManager: React.FC = () => {
     setRelatedSkills(c.relatedSkills?.join(', ') || '');
     setFeatured(c.featured);
     setIsProcessingImage(false);
+    setSingleUploadProgress(0);
     setModalOpen(true);
   };
 
@@ -93,11 +96,12 @@ export const CertificateManager: React.FC = () => {
     if (file) {
       try {
         setIsProcessingImage(true);
-        const optimized = await optimizeImage(file, 1280, 1280, 0.82);
-        setCertificateImage(optimized);
-        showToast('Certificate image uploaded and optimized!');
+        setSingleUploadProgress(5);
+        const uploaded = await uploadImagePermanently(file, (p) => setSingleUploadProgress(p));
+        setCertificateImage(uploaded.downloadURL);
+        showToast('Certificate uploaded permanently to cloud storage!');
       } catch (err) {
-        console.error('Certificate photo compression error:', err);
+        console.error('Certificate cloud upload error:', err);
       } finally {
         setIsProcessingImage(false);
       }
@@ -117,7 +121,7 @@ export const CertificateManager: React.FC = () => {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         if (file.type.startsWith('image/')) {
-          const optimized = await optimizeImage(file, 1280, 1280, 0.82);
+          const uploaded = await uploadImagePermanently(file);
           
           // Generate clean title from file name
           const cleanName = file.name
@@ -128,10 +132,10 @@ export const CertificateManager: React.FC = () => {
           addCertificate({
             title: cleanName || `Certificate ${certificates.length + added + 1}`,
             organization: 'Verified Academic / Tech Institution',
-            certificateImage: optimized,
+            certificateImage: uploaded.downloadURL,
             certificateId: `CERT-${Date.now().toString().slice(-4)}-${Math.floor(Math.random() * 900 + 100)}`,
             issueDate: new Date().getFullYear().toString(),
-            description: 'Officially certified achievement and credential validation.',
+            description: 'Officially certified achievement and credential validation stored permanently in Firebase Cloud.',
             featured: added === 0
           });
           added++;
@@ -139,9 +143,9 @@ export const CertificateManager: React.FC = () => {
       }
 
       fireConfetti({ particleCount: 80, spread: 90, origin: { y: 0.5 } });
-      showToast(`Successfully added ${added} certificate${added > 1 ? 's' : ''}!`);
+      showToast(`Successfully uploaded & saved ${added} certificate${added > 1 ? 's' : ''} to cloud!`);
     } catch (err) {
-      console.error('Error during bulk certificate upload:', err);
+      console.error('Error during bulk certificate cloud upload:', err);
     } finally {
       setIsBulkUploading(false);
       if (bulkFileInputRef.current) bulkFileInputRef.current.value = '';
@@ -619,9 +623,25 @@ export const CertificateManager: React.FC = () => {
                     ) : (
                       <Upload className="w-3.5 h-3.5" />
                     )}
-                    <span>{isProcessingImage ? 'Optimizing...' : 'Upload File'}</span>
+                    <span>{isProcessingImage ? `Uploading (${singleUploadProgress}%)...` : 'Upload File'}</span>
                   </button>
                 </div>
+
+                {/* Progress bar during single upload */}
+                {isProcessingImage && (
+                  <div className="mt-3 p-4 rounded-2xl bg-black/50 border border-purple-500/40 flex flex-col items-center justify-center gap-2">
+                    <Loader2 className="w-6 h-6 text-purple-400 animate-spin" />
+                    <span className="text-xs font-mono text-purple-300">
+                      Uploading permanently to Firebase Cloud ({singleUploadProgress}%)...
+                    </span>
+                    <div className="w-full max-w-xs h-2 rounded-full bg-slate-900 overflow-hidden border border-white/10">
+                      <div
+                        className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-200"
+                        style={{ width: `${Math.max(5, singleUploadProgress)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {/* LIVE PREVIEW */}
                 {certificateImage && (

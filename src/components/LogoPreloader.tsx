@@ -8,7 +8,7 @@ interface LogoPreloaderProps {
 }
 
 export const LogoPreloader: React.FC<LogoPreloaderProps> = ({ onComplete }) => {
-  const { profile, settings, projects, certificates, isInitialHydrated, setIsSiteReady } = usePortfolio();
+  const { profile, settings, projects, certificates, gallery, schoolPhotos, isInitialHydrated, setIsSiteReady } = usePortfolio();
   const [visible, setVisible] = useState(true);
   const [isExiting, setIsExiting] = useState(false);
   const [progress, setProgress] = useState(10);
@@ -68,12 +68,18 @@ export const LogoPreloader: React.FC<LogoPreloaderProps> = ({ onComplete }) => {
         if (profile.logoImage) imagesToPreload.push(profile.logoImage);
         if (settings.favicon) imagesToPreload.push(settings.favicon);
 
-        // Add top projects & certificates images to cache
+        // Add top projects, certificates, gallery, and school photos to cache
         projects.forEach(p => {
           if (p.image) imagesToPreload.push(p.image);
         });
         certificates.forEach(c => {
           if (c.certificateImage) imagesToPreload.push(c.certificateImage);
+        });
+        gallery.forEach(g => {
+          if (g.imageUrl) imagesToPreload.push(g.imageUrl);
+        });
+        schoolPhotos.forEach(s => {
+          if (s.imageUrl) imagesToPreload.push(s.imageUrl);
         });
 
         // Preload each image with decoding

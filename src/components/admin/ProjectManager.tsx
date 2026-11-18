@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { usePortfolio } from '../../context/PortfolioContext';
-import { optimizeImage } from '../../utils/imageOptimizer';
+import { uploadImagePermanently } from '../../firebase/cloudImageUpload';
 import { 
   FolderGit2, 
   PlusCircle, 
@@ -33,6 +33,7 @@ export const ProjectManager: React.FC = () => {
   const [category, setCategory] = useState('Web App');
   const [featured, setFeatured] = useState(false);
   const [isProcessingImage, setIsProcessingImage] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const resetForm = () => {
     setName('');
@@ -45,6 +46,7 @@ export const ProjectManager: React.FC = () => {
     setFeatured(false);
     setEditingProject(null);
     setIsProcessingImage(false);
+    setUploadProgress(0);
   };
 
   const handleOpenAdd = () => {
@@ -63,6 +65,7 @@ export const ProjectManager: React.FC = () => {
     setCategory(project.category || 'Web App');
     setFeatured(project.featured);
     setIsProcessingImage(false);
+    setUploadProgress(0);
     setModalOpen(true);
   };
 
@@ -71,10 +74,11 @@ export const ProjectManager: React.FC = () => {
     if (file) {
       try {
         setIsProcessingImage(true);
-        const optimized = await optimizeImage(file, 1280, 1280, 0.82);
-        setImage(optimized);
+        setUploadProgress(5);
+        const uploaded = await uploadImagePermanently(file, (p) => setUploadProgress(p));
+        setImage(uploaded.downloadURL);
       } catch (err) {
-        console.error('Project image compression error:', err);
+        console.error('Project image cloud upload error:', err);
       } finally {
         setIsProcessingImage(false);
       }
@@ -359,12 +363,34 @@ export const ProjectManager: React.FC = () => {
                   />
                   <label
                     htmlFor="project-image-upload"
-                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500/30 to-blue-500/30 hover:from-cyan-500/40 hover:to-blue-500/40 text-xs font-bold text-cyan-200 border border-cyan-500/50 cursor-pointer flex items-center gap-1.5 shrink-0 transition-all shadow-[0_0_12px_rgba(0,229,255,0.25)]"
+                    className={`px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500/30 to-blue-500/30 hover:from-cyan-500/40 hover:to-blue-500/40 text-xs font-bold text-cyan-200 border border-cyan-500/50 cursor-pointer flex items-center gap-1.5 shrink-0 transition-all shadow-[0_0_12px_rgba(0,229,255,0.25)] ${
+                      isProcessingImage ? 'opacity-60 pointer-events-none' : ''
+                    }`}
                   >
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>Upload File</span>
+                    {isProcessingImage ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Upload className="w-3.5 h-3.5" />
+                    )}
+                    <span>{isProcessingImage ? `Uploading (${uploadProgress}%)...` : 'Upload File'}</span>
                   </label>
                 </div>
+
+                {/* Progress bar */}
+                {isProcessingImage && (
+                  <div className="mt-3 p-4 rounded-2xl bg-black/40 border border-cyan-500/30 flex flex-col items-center justify-center gap-2">
+                    <Loader2 className="w-6 h-6 text-cyan-400 animate-spin" />
+                    <span className="text-xs font-mono text-cyan-300">
+                      Uploading permanently to Firebase Cloud ({uploadProgress}%)...
+                    </span>
+                    <div className="w-full max-w-xs h-2 rounded-full bg-slate-900 overflow-hidden border border-white/10">
+                      <div
+                        className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-200"
+                        style={{ width: `${Math.max(5, uploadProgress)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {/* LIVE PREVIEW */}
                 {image && (

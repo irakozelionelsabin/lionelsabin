@@ -173,6 +173,7 @@ export interface HeroFeatureTab {
 
 export type AdminView = 
   | 'dashboard'
+  | 'cloud-uploader'
   | 'profile'
   | 'header-tabs'
   | 'hero-tabs'

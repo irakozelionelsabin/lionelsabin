@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { usePortfolio } from '../../context/PortfolioContext';
-import { optimizeImage } from '../../utils/imageOptimizer';
+import { uploadImagePermanently } from '../../firebase/cloudImageUpload';
 import { 
   Image as ImageIcon, 
   Upload, 
@@ -27,6 +27,7 @@ export const GalleryManager: React.FC = () => {
   const [category, setCategory] = useState('Gallery 2');
   const [featured, setFeatured] = useState(false);
   const [isProcessingImage, setIsProcessingImage] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
 
   const resetForm = () => {
@@ -37,6 +38,7 @@ export const GalleryManager: React.FC = () => {
     setFeatured(false);
     setEditingPhoto(null);
     setIsProcessingImage(false);
+    setUploadProgress(0);
   };
 
   const handleOpenAdd = () => {
@@ -52,6 +54,7 @@ export const GalleryManager: React.FC = () => {
     setCategory(photo.category);
     setFeatured(photo.featured);
     setIsProcessingImage(false);
+    setUploadProgress(0);
     setModalOpen(true);
   };
 
@@ -61,10 +64,16 @@ export const GalleryManager: React.FC = () => {
 
     try {
       setIsProcessingImage(true);
-      const optimized = await optimizeImage(file, 1280, 1280, 0.82);
-      setImageUrl(optimized);
+      setUploadProgress(5);
+      const uploadedRecord = await uploadImagePermanently(file, (pct) => {
+        setUploadProgress(pct);
+      });
+      setImageUrl(uploadedRecord.downloadURL);
+      if (!title.trim()) {
+        setTitle(file.name.replace(/\.[^/.]+$/, ''));
+      }
     } catch (err) {
-      console.error('Image compression error:', err);
+      console.error('Permanent cloud upload error:', err);
     } finally {
       setIsProcessingImage(false);
     }
@@ -313,9 +322,17 @@ export const GalleryManager: React.FC = () => {
 
                 {/* LIVE PHOTO PREVIEW BEFORE SAVING */}
                 {isProcessingImage ? (
-                  <div className="mt-3 p-6 rounded-2xl bg-black/40 border border-pink-500/30 flex flex-col items-center justify-center gap-2">
+                  <div className="mt-3 p-6 rounded-2xl bg-black/40 border border-pink-500/30 flex flex-col items-center justify-center gap-2.5">
                     <Loader2 className="w-6 h-6 text-pink-400 animate-spin" />
-                    <span className="text-xs font-mono text-pink-300">Processing & optimizing photo...</span>
+                    <span className="text-xs font-mono text-pink-300">
+                      Uploading permanently to Firebase Cloud ({uploadProgress}%)...
+                    </span>
+                    <div className="w-full max-w-xs h-2 rounded-full bg-slate-900 overflow-hidden border border-white/10">
+                      <div
+                        className="h-full bg-gradient-to-r from-pink-500 to-cyan-400 transition-all duration-200"
+                        style={{ width: `${Math.max(5, uploadProgress)}%` }}
+                      />
+                    </div>
                   </div>
                 ) : imageUrl ? (
                   <div className="mt-3 p-3 rounded-2xl bg-black/40 border border-pink-500/30 space-y-2">

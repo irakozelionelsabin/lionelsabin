@@ -1,6 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { usePortfolio } from '../../context/PortfolioContext';
 import { fireConfetti } from '../../utils/confetti';
+import { uploadFileToSupabase } from '../../supabase/client';
+import { generateUniqueFileName } from '../../firebase/cloudImageUpload';
 import {
   Video,
   Upload,
@@ -69,6 +71,24 @@ export const IntroVideoManager: React.FC = () => {
       setIsUploading(true);
 
       try {
+        // 1. Try uploading directly to Supabase Storage for fast CDN streaming URL
+        const uniqueName = generateUniqueFileName(file.name);
+        const supabaseVideo = await uploadFileToSupabase(file, uniqueName, 'videos');
+
+        if (supabaseVideo?.publicUrl) {
+          await setIntroVideoData(supabaseVideo.publicUrl);
+          updateSettings({
+            introVideoTitle: file.name,
+            introVideoEnabled: true
+          });
+          setSaveSuccess(true);
+          fireConfetti({ particleCount: 60, spread: 70, origin: { y: 0.5 } });
+          setTimeout(() => setSaveSuccess(false), 3000);
+          setIsUploading(false);
+          return;
+        }
+
+        // 2. Fallback: Read as DataURL & persist via chunked Firestore storage
         const reader = new FileReader();
         reader.onload = async (event) => {
           const result = event.target?.result as string;

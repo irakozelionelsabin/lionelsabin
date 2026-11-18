@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { usePortfolio } from '../../context/PortfolioContext';
 import { HeroFeatureTab } from '../../types';
-import { optimizeImage } from '../../utils/imageOptimizer';
+import { uploadImagePermanently } from '../../firebase/cloudImageUpload';
 import { fireConfetti } from '../../utils/confetti';
 import {
   Brain,
@@ -59,16 +59,16 @@ export const HeroTabsManager: React.FC = () => {
     if (file && selectedTab) {
       try {
         setIsUploading(true);
-        const optimized = await optimizeImage(file, 1000, 1000, 0.85);
+        const uploaded = await uploadImagePermanently(file);
         updateHeroTab(selectedTab.id, {
-          image: optimized,
+          image: uploaded.downloadURL,
           showImageAs: selectedTab.showImageAs || 'background'
         });
         setSaveSuccess(true);
         fireConfetti({ particleCount: 50, spread: 60, origin: { y: 0.5 } });
         setTimeout(() => setSaveSuccess(false), 3000);
       } catch (err) {
-        console.error('Error optimizing hero tab image:', err);
+        console.error('Error uploading hero tab image permanently:', err);
       } finally {
         setIsUploading(false);
       }

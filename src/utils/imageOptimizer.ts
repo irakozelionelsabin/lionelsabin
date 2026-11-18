@@ -78,8 +78,29 @@ export async function optimizeImage(
             ctx.drawImage(img, 0, 0, width, height);
 
             if (isPng) {
-              // Preserve PNG format without background
-              const compressedPng = canvas.toDataURL('image/png');
+              // Preserve PNG transparency; if too large for Firestore doc limit, downscale or use WebP (keeps alpha)
+              let compressedPng = canvas.toDataURL('image/png');
+              if (compressedPng.length > 650000) {
+                const webpAlpha = canvas.toDataURL('image/webp', quality);
+                if (webpAlpha.startsWith('data:image/webp') && webpAlpha.length <= 650000) {
+                  compressedPng = webpAlpha;
+                } else {
+                  const smallCanvas = document.createElement('canvas');
+                  smallCanvas.width = Math.round(width * 0.6);
+                  smallCanvas.height = Math.round(height * 0.6);
+                  const smallCtx = smallCanvas.getContext('2d');
+                  if (smallCtx) {
+                    smallCtx.clearRect(0, 0, smallCanvas.width, smallCanvas.height);
+                    smallCtx.imageSmoothingEnabled = true;
+                    smallCtx.imageSmoothingQuality = 'high';
+                    smallCtx.drawImage(canvas, 0, 0, smallCanvas.width, smallCanvas.height);
+                    const smallWebp = smallCanvas.toDataURL('image/webp', 0.8);
+                    compressedPng = smallWebp.startsWith('data:image/webp')
+                      ? smallWebp
+                      : smallCanvas.toDataURL('image/png');
+                  }
+                }
+              }
               resolve(compressedPng);
             } else {
               // Standard JPEG compression for opaque camera photos

@@ -8,6 +8,7 @@ import {
   getDoc 
 } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
+import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 // Initialize Firebase once
@@ -29,6 +30,7 @@ try {
 
 export const db = firestoreInstance;
 export const auth = getAuth(app);
+export const storage = getStorage(app);
 
 // Connection verification as per Firebase skill
 export async function testFirestoreConnection(): Promise<boolean> {

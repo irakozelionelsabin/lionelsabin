@@ -246,15 +246,37 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         // Step 2: Full cloud database hydration across all collections
         const cloudData = await loadAllFromFirestore();
         if (cloudData) {
-          if (cloudData.profile) setProfile(cloudData.profile);
-          if (cloudData.services) setServices(cloudData.services);
-          if (cloudData.education) setEducation(cloudData.education);
-          if (cloudData.skills) setSkills(cloudData.skills);
-          if (cloudData.projects) setProjects(cloudData.projects);
-          if (cloudData.certificates) setCertificates(cloudData.certificates);
-          if (cloudData.gallery) setGallery(cloudData.gallery);
-          if (cloudData.schoolPhotos) setSchoolPhotos(cloudData.schoolPhotos);
-          if (cloudData.testimonials) setTestimonials(cloudData.testimonials);
+          if (cloudData.profile) {
+            setProfile(prev => ({
+              ...prev,
+              ...cloudData.profile,
+              profilePhoto: cloudData.profile?.profilePhoto || prev.profilePhoto
+            }));
+          }
+          if (cloudData.services && cloudData.services.length > 0) setServices(cloudData.services);
+          if (cloudData.education && cloudData.education.length > 0) setEducation(cloudData.education);
+          if (cloudData.skills && cloudData.skills.length > 0) setSkills(cloudData.skills);
+          if (cloudData.projects && cloudData.projects.length > 0) {
+            setProjects(cloudData.projects);
+          } else {
+            setProjects(initialProjects);
+          }
+          if (cloudData.certificates && cloudData.certificates.length > 0) {
+            setCertificates(cloudData.certificates);
+          } else {
+            setCertificates(initialCertificates);
+          }
+          if (cloudData.gallery && cloudData.gallery.length > 0) {
+            setGallery(cloudData.gallery);
+          } else {
+            setGallery(initialGallery);
+          }
+          if (cloudData.schoolPhotos && cloudData.schoolPhotos.length > 0) {
+            setSchoolPhotos(cloudData.schoolPhotos);
+          } else {
+            setSchoolPhotos(initialSchoolPhotos);
+          }
+          if (cloudData.testimonials && cloudData.testimonials.length > 0) setTestimonials(cloudData.testimonials);
           if (cloudData.messages) setMessages(cloudData.messages);
           if (cloudData.settings) {
             setSettings(prev => ({
@@ -262,8 +284,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               adminPassword: cloudData.settings.adminPassword || prev.adminPassword || 'Lionel191@'
             }));
           }
-          if (cloudData.headerTabs) setHeaderTabs(cloudData.headerTabs);
-          if (cloudData.heroTabs) setHeroTabs(cloudData.heroTabs);
+          if (cloudData.headerTabs && cloudData.headerTabs.length > 0) setHeaderTabs(cloudData.headerTabs);
+          if (cloudData.heroTabs && cloudData.heroTabs.length > 0) setHeroTabs(cloudData.heroTabs);
 
           // If cloud has an intro video, update state and cache locally for multi-device support
           if (cloudData.introVideo) {

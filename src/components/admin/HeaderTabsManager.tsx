@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { usePortfolio } from '../../context/PortfolioContext';
-import { optimizeImage } from '../../utils/imageOptimizer';
+import { uploadImagePermanently } from '../../firebase/cloudImageUpload';
 import { 
   Home, 
   User, 
@@ -42,11 +42,11 @@ export const HeaderTabsManager: React.FC = () => {
     if (file) {
       try {
         setProcessingTabId(id);
-        const optimized = await optimizeImage(file, 800, 800, 0.85);
-        updateHeaderTab(id, { image: optimized });
+        const uploaded = await uploadImagePermanently(file);
+        updateHeaderTab(id, { image: uploaded.downloadURL });
         triggerSaveBadge(id);
       } catch (err) {
-        console.error('Error optimizing tab image:', err);
+        console.error('Error uploading header tab image permanently:', err);
       } finally {
         setProcessingTabId(null);
       }
